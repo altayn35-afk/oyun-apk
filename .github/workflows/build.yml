@@ -14,16 +14,26 @@ jobs:
       run: |
         sudo apt update
         sudo apt install -y build-essential ccache git python3-pip openjdk-17-jdk unzip zlib1g-dev libffi-dev libssl-dev libncurses-dev
-    - name: Accept Android licenses
+    - name: Setup Android SDK
       run: |
-        mkdir -p $HOME/.android
-        touch $HOME/.android/repositories.cfg
-        # Lisansları önceden kabul et
-        yes | sdkmanager --licenses || true
+        # SDK dizinini oluştur ve içine araçları indir
+        mkdir -p $HOME/android-sdk/cmdline-tools
+        wget https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -O cmdline-tools.zip
+        unzip cmdline-tools.zip -d $HOME/android-sdk/cmdline-tools
+        mv $HOME/android-sdk/cmdline-tools/cmdline-tools $HOME/android-sdk/cmdline-tools/latest
+        
+        # Lisansları kabul et
+        export PATH=$PATH:$HOME/android-sdk/cmdline-tools/latest/bin
+        yes | sdkmanager --licenses
+        
+        # Build-tools ve SDK'yı kur
+        sdkmanager "build-tools;34.0.0" "platforms;android-34" "platform-tools"
     - name: Install buildozer
       run: pip install buildozer
     - name: Build APK
-      run: buildozer android debug
+      run: |
+        export ANDROID_HOME=$HOME/android-sdk
+        buildozer android debug
     - name: Upload APK
       uses: actions/upload-artifact@v4
       with:
