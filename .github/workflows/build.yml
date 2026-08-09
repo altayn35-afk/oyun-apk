@@ -12,13 +12,14 @@ jobs:
         python-version: '3.9'
     - name: Install dependencies
       run: |
-        sudo dpkg --add-architecture i386
         sudo apt update
-        sudo apt install -y build-essential ccache git python3-pip openjdk-17-jdk unzip zlib1g-dev libffi-dev libssl-dev
+        sudo apt install -y build-essential ccache git python3-pip openjdk-17-jdk unzip zlib1g-dev libffi-dev libssl-dev libncurses5
     - name: Install buildozer
       run: pip install buildozer
     - name: Build APK
-      run: buildozer -v android debug
+      run: |
+        buildozer --version
+        buildozer android debug
     - name: Upload APK
       uses: actions/upload-artifact@v4
       with:
