@@ -12,8 +12,9 @@ jobs:
         python-version: '3.9'
     - name: Install dependencies
       run: |
+        sudo dpkg --add-architecture i386
         sudo apt update
-        sudo apt install -y build-essential ccache git libncurses5:i386 libstdc++6:i386 libgtk2.0-0:i386 libpangox-1.0-0:i386 libpangoxft-1.0-0:i386 libidn11:i386 python3-pip
+        sudo apt install -y build-essential ccache git python3-pip openjdk-17-jdk unzip zlib1g-dev libffi-dev libssl-dev
     - name: Install buildozer
       run: pip install buildozer
     - name: Build APK
