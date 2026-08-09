@@ -4,13 +4,22 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
-    - uses: actions/setup-python@v5
-      with: {python-version: '3.9'}
-    - run: sudo apt update && sudo apt install -y build-essential ccache git libncurses5:i386 libstdc++6:i386 libgtk2.0-0:i386 libpangox-1.0-0:i386 libpangoxft-1.0-0:i386 libidn11:i386 python3-pip
-    - run: pip install buildozer
-    - run: buildozer android debug
-    - uses: actions/upload-artifact@v4
+    - name: Checkout code
+      uses: actions/checkout@v4
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.9'
+    - name: Install dependencies
+      run: |
+        sudo apt update
+        sudo apt install -y build-essential ccache git libncurses5:i386 libstdc++6:i386 libgtk2.0-0:i386 libpangox-1.0-0:i386 libpangoxft-1.0-0:i386 libidn11:i386 python3-pip
+    - name: Install buildozer
+      run: pip install buildozer
+    - name: Build APK
+      run: buildozer android debug
+    - name: Upload APK
+      uses: actions/upload-artifact@v4
       with:
         name: package
         path: bin/*.apk
