@@ -24,19 +24,26 @@ jobs:
           pip install --upgrade pip
           pip install cython==0.29.36 buildozer
 
-      - name: Pre-install Android SDK & Build-Tools (Java 17 & Aidl Fix)
+      - name: Pre-install Android SDK & Legacy Tools Path Fix
         run: |
-          # Java 17'yi varsayılan Java olarak ayarlıyoruz
           export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
           export PATH=$JAVA_HOME/bin:$PATH
 
           ANDROID_HOME="/home/runner/.buildozer/android/platform/android-sdk"
+          
+          # 1. Modern yolu oluştur
           mkdir -p $ANDROID_HOME/cmdline-tools
+          
+          # 2. Buildozer'ın aradığı ESKİ 'tools' yolunu da oluşturuyoruz
+          mkdir -p $ANDROID_HOME/tools
 
           # Google'ın resmi araçlarını indiriyoruz
           wget https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -O cmdline-tools.zip
           unzip -q cmdline-tools.zip -d /tmp/
+          
+          # Her iki yere de doğru şekilde yerleştiriyoruz
           mv /tmp/cmdline-tools $ANDROID_HOME/cmdline-tools/latest
+          cp -r $ANDROID_HOME/cmdline-tools/latest/* $ANDROID_HOME/tools/
           rm -rf cmdline-tools.zip
 
           # Lisansları peşinen onaylıyoruz
@@ -44,7 +51,7 @@ jobs:
           echo "8933bad161af4178b1185d1a37fbf41ea5261c55" > $ANDROID_HOME/licenses/android-sdk-license
           echo "d56f518747835154366299b646c0780287114777" >> $ANDROID_HOME/licenses/android-sdk-license
 
-          # Java 17 ile sdkmanager'ı çalıştırıp build-tools'u kuruyoruz
+          # Build-tools'u kuruyoruz
           export PATH=$PATH:$ANDROID_HOME/cmdline-tools/latest/bin
           sdkmanager --sdk_root=$ANDROID_HOME "build-tools;33.0.0" "platforms;android-33" "platform-tools"
 
