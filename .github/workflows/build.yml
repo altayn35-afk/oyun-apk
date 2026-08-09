@@ -14,25 +14,18 @@ jobs:
       run: |
         sudo apt update
         sudo apt install -y build-essential ccache git python3-pip openjdk-17-jdk unzip zlib1g-dev libffi-dev libssl-dev libncurses-dev
-    - name: Setup Android SDK
-      run: |
-        # SDK dizinini oluştur ve içine araçları indir
-        mkdir -p $HOME/android-sdk/cmdline-tools
-        wget https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -O cmdline-tools.zip
-        unzip cmdline-tools.zip -d $HOME/android-sdk/cmdline-tools
-        mv $HOME/android-sdk/cmdline-tools/cmdline-tools $HOME/android-sdk/cmdline-tools/latest
-        
-        # Lisansları kabul et
-        export PATH=$PATH:$HOME/android-sdk/cmdline-tools/latest/bin
-        yes | sdkmanager --licenses
-        
-        # Build-tools ve SDK'yı kur
-        sdkmanager "build-tools;34.0.0" "platforms;android-34" "platform-tools"
     - name: Install buildozer
       run: pip install buildozer
     - name: Build APK
       run: |
-        export ANDROID_HOME=$HOME/android-sdk
+        # Buildozer'ı bir kez çalıştırıp klasörleri oluşturmasını sağla (hata verecek ama klasörü açacak)
+        buildozer android debug || true
+        
+        # Şimdi lisansları Buildozer'ın kendi oluşturduğu SDK klasörüne zorla kabul ettir
+        mkdir -p /home/runner/.buildozer/android/platform/android-sdk/licenses
+        echo "8933bad161af4178b1185d1a37fbf41ea5261c55" > /home/runner/.buildozer/android/platform/android-sdk/licenses/android-sdk-license
+        
+        # Şimdi gerçek derlemeyi başlat
         buildozer android debug
     - name: Upload APK
       uses: actions/upload-artifact@v4
