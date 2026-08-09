@@ -13,13 +13,17 @@ jobs:
     - name: Install dependencies
       run: |
         sudo apt update
-        sudo apt install -y build-essential ccache git python3-pip openjdk-17-jdk unzip zlib1g-dev libffi-dev libssl-dev libncurses-dev cmake
+        sudo apt install -y build-essential ccache git python3-pip openjdk-17-jdk unzip zlib1g-dev libffi-dev libssl-dev libncurses-dev
+    - name: Accept Android licenses
+      run: |
+        mkdir -p $HOME/.android
+        touch $HOME/.android/repositories.cfg
+        # Lisansları önceden kabul et
+        yes | sdkmanager --licenses || true
     - name: Install buildozer
       run: pip install buildozer
     - name: Build APK
-      run: |
-        # Buildozer'ın kendi SDK'sını kurmasını engelleyip sistem araçlarını kullanmaya zorluyoruz
-        buildozer android debug
+      run: buildozer android debug
     - name: Upload APK
       uses: actions/upload-artifact@v4
       with:
