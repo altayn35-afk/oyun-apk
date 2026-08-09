@@ -16,16 +16,25 @@ jobs:
         sudo apt install -y build-essential ccache git python3-pip openjdk-17-jdk unzip zlib1g-dev libffi-dev libssl-dev libncurses-dev
     - name: Install buildozer
       run: pip install buildozer
-    - name: Force License Acceptance & Build
+    - name: Setup Android SDK for Buildozer
       run: |
-        # SDK dizinini hazırla
+        # Buildozer'ın aradığı tam dizini oluşturuyoruz
+        mkdir -p /home/runner/.buildozer/android/platform/android-sdk/tools
+        
+        # Google'ın resmi komut satırı araçlarını indiriyoruz
+        wget https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -O cmdline-tools.zip
+        unzip cmdline-tools.zip -d /tmp/
+        
+        # Buildozer'ın bulabileceği şekilde doğru konuma taşıyoruz
+        mv /tmp/cmdline-tools/* /home/runner/.buildozer/android/platform/android-sdk/tools/
+        rm -rf cmdline-tools.zip
+        
+        # Lisansları otomatik onaylayacak dosyayı ekliyoruz
         mkdir -p /home/runner/.buildozer/android/platform/android-sdk/licenses
-        # Lisansları "onaylı" olarak sisteme tanıt
         echo "8933bad161af4178b1185d1a37fbf41ea5261c55" > /home/runner/.buildozer/android/platform/android-sdk/licenses/android-sdk-license
         echo "d56f518747835154366299b646c0780287114777" >> /home/runner/.buildozer/android/platform/android-sdk/licenses/android-sdk-license
-        
-        # Artık lisans sormayacak, derlemeyi başlat
-        buildozer -v android debug
+    - name: Build APK
+      run: buildozer -v android debug
     - name: Upload APK
       uses: actions/upload-artifact@v4
       with:
