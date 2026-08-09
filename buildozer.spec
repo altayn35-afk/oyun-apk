@@ -2,8 +2,8 @@
 title = Oyunum
 package.name = oyunum
 package.domain = org.oyun
+source.dir = .
 source.include_exts = py,png,jpg,kv,atlas,mp3,wav
-source.include_dir = .
 version = 0.1
 requirements = python3,pygame
 orientation = portrait
