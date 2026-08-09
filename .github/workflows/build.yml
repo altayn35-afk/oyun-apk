@@ -1,0 +1,16 @@
+name: Build APK
+on: [push]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - uses: actions/setup-python@v2
+      with: {python-version: '3.9'}
+    - run: sudo apt update && sudo apt install -y build-essential ccache git libncurses5:i386 libstdc++6:i386 libgtk2.0-0:i386 libpangox-1.0-0:i386 libpangoxft-1.0-0:i386 libidn11:i386 python3-pip
+    - run: pip install buildozer
+    - run: buildozer android debug
+    - uses: actions/upload-artifact@v2
+      with:
+        name: package
+        path: bin/*.apk
