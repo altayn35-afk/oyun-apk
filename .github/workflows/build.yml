@@ -13,19 +13,15 @@ jobs:
     - name: Install dependencies
       run: |
         sudo apt update
-        sudo apt install -y build-essential ccache git python3-pip openjdk-17-jdk unzip zlib1g-dev libffi-dev libssl-dev libncurses-dev
-    - name: Install buildozer
-      run: pip install buildozer
+        sudo apt install -y build-essential git python3-pip openjdk-17-jdk unzip
+        pip install --upgrade pip
+        pip install buildozer
     - name: Build APK
       run: |
-        # Buildozer'ı bir kez çalıştırıp klasörleri oluşturmasını sağla (hata verecek ama klasörü açacak)
-        buildozer android debug || true
-        
-        # Şimdi lisansları Buildozer'ın kendi oluşturduğu SDK klasörüne zorla kabul ettir
-        mkdir -p /home/runner/.buildozer/android/platform/android-sdk/licenses
-        echo "8933bad161af4178b1185d1a37fbf41ea5261c55" > /home/runner/.buildozer/android/platform/android-sdk/licenses/android-sdk-license
-        
-        # Şimdi gerçek derlemeyi başlat
+        # Buildozer'ın kendi SDK'yı kurmaya çalışmasını engelliyoruz
+        # Bunun yerine buildozer'a SDK yerini biz manuel gösteriyoruz
+        export ANDROID_HOME=/usr/local/lib/android/sdk
+        export ANDROID_NDK_HOME=/usr/local/lib/android/sdk/ndk/27.3.13750724
         buildozer android debug
     - name: Upload APK
       uses: actions/upload-artifact@v4
