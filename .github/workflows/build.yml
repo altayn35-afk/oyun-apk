@@ -24,8 +24,12 @@ jobs:
           pip install --upgrade pip
           pip install cython==0.29.36 buildozer
 
-      - name: Pre-install Android SDK & Build-Tools (Aidl Fix)
+      - name: Pre-install Android SDK & Build-Tools (Java 17 & Aidl Fix)
         run: |
+          # Java 17'yi varsayılan Java olarak ayarlıyoruz
+          export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
+          export PATH=$JAVA_HOME/bin:$PATH
+
           ANDROID_HOME="/home/runner/.buildozer/android/platform/android-sdk"
           mkdir -p $ANDROID_HOME/cmdline-tools
 
@@ -40,12 +44,14 @@ jobs:
           echo "8933bad161af4178b1185d1a37fbf41ea5261c55" > $ANDROID_HOME/licenses/android-sdk-license
           echo "d56f518747835154366299b646c0780287114777" >> $ANDROID_HOME/licenses/android-sdk-license
 
-          # Tehlikeli ve çökmeye sebep olan 'yes |' komutunu kaldırdık, doğrudan kurduruyoruz
+          # Java 17 ile sdkmanager'ı çalıştırıp build-tools'u kuruyoruz
           export PATH=$PATH:$ANDROID_HOME/cmdline-tools/latest/bin
           sdkmanager --sdk_root=$ANDROID_HOME "build-tools;33.0.0" "platforms;android-33" "platform-tools"
 
       - name: Build APK
         run: |
+          export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
+          export PATH=$JAVA_HOME/bin:$PATH
           buildozer -v android debug
 
       - name: Upload APK
