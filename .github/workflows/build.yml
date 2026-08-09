@@ -1,25 +1,17 @@
-name: Build APK
+[app]
+title = Oyunum
+package.name = oyunum
+package.domain = org.oyun
+source.dir = .
+source.include_exts = py,png,jpg,kv,atlas,mp3,wav
+version = 0.1
+requirements = python3,pygame
+orientation = portrait
+fullscreen = 1
+android.permissions = INTERNET
 
-on: [push]
-
-jobs:
-  build:
-    runs-on: ubuntu-22.04
-    container: kivy/buildozer:latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Fix permissions
-        run: |
-          git config --global --add safe.directory /__w/oyun-apk/oyun-apk
-
-      - name: Build APK
-        run: |
-          echo "y" | buildozer -v android debug
-
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: package
-          path: bin/*.apk
+[buildozer]
+log_level = 2
+warn_on_root = 0
+android.api = 33
+android.min_api = 21
