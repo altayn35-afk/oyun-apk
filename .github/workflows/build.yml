@@ -29,7 +29,7 @@ jobs:
           ANDROID_HOME="/home/runner/.buildozer/android/platform/android-sdk"
           mkdir -p $ANDROID_HOME/cmdline-tools
 
-          # Google'ın resmi araçlarını doğrudan indirip Buildozer'ın yoluna kuruyoruz
+          # Google'ın resmi araçlarını indiriyoruz
           wget https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -O cmdline-tools.zip
           unzip -q cmdline-tools.zip -d /tmp/
           mv /tmp/cmdline-tools $ANDROID_HOME/cmdline-tools/latest
@@ -40,9 +40,9 @@ jobs:
           echo "8933bad161af4178b1185d1a37fbf41ea5261c55" > $ANDROID_HOME/licenses/android-sdk-license
           echo "d56f518747835154366299b646c0780287114777" >> $ANDROID_HOME/licenses/android-sdk-license
 
-          # Aidl'i barındıran build-tools paketini ve platformları zorla kurduruyoruz
+          # Tehlikeli ve çökmeye sebep olan 'yes |' komutunu kaldırdık, doğrudan kurduruyoruz
           export PATH=$PATH:$ANDROID_HOME/cmdline-tools/latest/bin
-          yes | sdkmanager --sdk_root=$ANDROID_HOME "build-tools;33.0.0" "platforms;android-33" "platform-tools"
+          sdkmanager --sdk_root=$ANDROID_HOME "build-tools;33.0.0" "platforms;android-33" "platform-tools"
 
       - name: Build APK
         run: |
