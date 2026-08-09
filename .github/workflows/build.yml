@@ -7,7 +7,7 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
     - name: Set up Python
-      uses: actions/setup-python@v5
+      uses: python-actions/setup-python@v5
       with:
         python-version: '3.9'
     - name: Install dependencies
@@ -16,6 +16,11 @@ jobs:
         sudo apt install -y build-essential ccache git python3-pip openjdk-17-jdk unzip zlib1g-dev libffi-dev libssl-dev libncurses-dev
     - name: Install buildozer
       run: pip install buildozer
+    - name: Setup Android SDK
+      run: |
+        mkdir -p .buildozer/android/platform/android-sdk
+        export ANDROID_HOME=$PWD/.buildozer/android/platform/android-sdk
+        yes | pip install --upgrade buildozer
     - name: Build APK
       run: buildozer android debug
     - name: Upload APK
