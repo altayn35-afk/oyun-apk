@@ -1,48 +1,21 @@
 name: Build APK
+
 on: [push]
+
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-    - name: Set up Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: '3.9'
-    - name: Install dependencies
-      run: |
-        sudo apt update
-        sudo apt install -y build-essential ccache git python3-pip openjdk-17-jdk unzip zlib1g-dev libffi-dev libssl-dev libncurses-dev
-    - name: Install buildozer
-      run: pip install buildozer
-    - name: Pre-install Android SDK & Build-Tools
-      run: |
-        ANDROID_HOME=/home/runner/.buildozer/android/platform/android-sdk
-        mkdir -p $ANDROID_HOME/cmdline-tools
-        
-        # Komut satırı araçlarını indir
-        wget https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -O cmdline-tools.zip
-        unzip cmdline-tools.zip -d /tmp/
-        mv /tmp/cmdline-tools $ANDROID_HOME/cmdline-tools/latest
-        rm -rf cmdline-tools.zip
-        
-        # Buildozer'ın aradığı eski 'tools' yolunu da desteklemesi için kopyala
-        mkdir -p $ANDROID_HOME/tools
-        cp -r $ANDROID_HOME/cmdline-tools/latest/* $ANDROID_HOME/tools/
-        
-        # Lisansları otomatik onayla
-        mkdir -p $ANDROID_HOME/licenses
-        echo "8933bad161af4178b1185d1a37fbf41ea5261c55" > $ANDROID_HOME/licenses/android-sdk-license
-        echo "d56f518747835154366299b646c0780287114777" >> $ANDROID_HOME/licenses/android-sdk-license
-        
-        # Aidl içeren build-tools ve platform paketlerini zorla kur
-        export PATH=$PATH:$ANDROID_HOME/cmdline-tools/latest/bin
-        yes | sdkmanager --sdk_root=$ANDROID_HOME "build-tools;33.0.0" "platforms;android-33" "platform-tools"
-    - name: Build APK
-      run: buildozer -v android debug
-    - name: Upload APK
-      uses: actions/upload-artifact@v4
-      with:
-        name: package
-        path: bin/*.apk
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Build with Buildozer
+        uses: ArtemSBulgakov/buildozer-action@v1
+        with:
+          command: buildozer android debug
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: package
+          path: bin/*.apk
