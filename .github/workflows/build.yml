@@ -1,60 +1,37 @@
-name: Build APK
+name: APK Derle
 
-on: [push]
+on:
+  push:
+    branches: [ main, master ]
 
 jobs:
   build:
     runs-on: ubuntu-22.04
+
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+    - uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.9'
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.10'
 
-      - name: Install System Dependencies
-        run: |
-          sudo apt update
-          sudo apt install -y build-essential ccache git python3-pip openjdk-17-jdk unzip zlib1g-dev libffi-dev libssl-dev libncurses5 libncursesw5 libsdl2-dev libsdl2-image-dev libsdl2-mixer-dev libsdl2-ttf-dev
+    - name: Sistem paketlerini kur
+      run: |
+        sudo apt update
+        sudo apt install -y git zip unzip openjdk-17-jdk python3-pip autoconf libtool pkg-config zlib1g-dev libncurses5-dev cmake libffi-dev libssl-dev
 
-      - name: Install Buildozer & Cython
-        run: |
-          pip install --upgrade pip
-          pip install cython==0.29.36 buildozer
+    - name: Buildozer kur
+      run: |
+        pip install --upgrade pip
+        pip install buildozer==1.5.0 cython==0.29.33
 
-      - name: Setup Android SDK & Force Install Build-Tools
-        run: |
-          export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
-          export PATH=$JAVA_HOME/bin:$PATH
+    - name: APK derle (lisanslari otomatik kabul et)
+      run: |
+        yes | buildozer -v android debug
 
-          ANDROID_HOME="/home/runner/.buildozer/android/platform/android-sdk"
-          mkdir -p $ANDROID_HOME/cmdline-tools
-          mkdir -p $ANDROID_HOME/tools
-
-          # Google araçlarını indir
-          wget https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -O cmdline-tools.zip
-          unzip -q cmdline-tools.zip -d /tmp/
-          mv /tmp/cmdline-tools $ANDROID_HOME/cmdline-tools/latest
-          cp -r $ANDROID_HOME/cmdline-tools/latest/* $ANDROID_HOME/tools/
-          rm -rf cmdline-tools.zip
-
-          # Lisansları otomatik ve eksiksiz kabul ettir
-          export PATH=$PATH:$ANDROID_HOME/cmdline-tools/latest/bin
-          yes | sdkmanager --sdk_root=$ANDROID_HOME --licenses || true
-
-          # Aidl'i içeren build-tools 33.0.0'ı zorla kur
-          sdkmanager --sdk_root=$ANDROID_HOME "build-tools;33.0.0" "platforms;android-33" "platform-tools"
-
-      - name: Build APK
-        run: |
-          export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
-          export PATH=$JAVA_HOME/bin:$PATH
-          buildozer -v android debug
-
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: package
-          path: bin/*.apk
+    - name: APK dosyasini kaydet
+      uses: actions/upload-artifact@v4
+      with:
+        name: minik-kasifler-apk
+        path: bin/*.apk
