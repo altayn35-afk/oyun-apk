@@ -13,8 +13,9 @@ jobs:
         python-version: '3.10'
     - name: Sistem paketlerini kur
       run: |
-        sudo apt update
-        sudo apt install -y git zip unzip openjdk-17-jdk python3-pip autoconf libtool pkg-config zlib1g-dev libncurses5-dev cmake libffi-dev libssl-dev
+        export DEBIAN_FRONTEND=noninteractive
+        sudo -E apt update
+        sudo -E apt install -y git zip unzip openjdk-17-jdk python3-pip autoconf libtool pkg-config zlib1g-dev libncurses5-dev cmake libffi-dev libssl-dev
     - name: Buildozer kur
       run: |
         pip install --upgrade pip
