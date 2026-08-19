@@ -23,4 +23,12 @@ jobs:
     - name: Pip sürümünü sabitle
       run: |
         echo "pip==24.0" > /tmp/pip-constraint.txt
-        echo "PIP_CONSTRAINT=/tmp/pip-constraint.txt"
+        echo "PIP_CONSTRAINT=/tmp/pip-constraint.txt" >> $GITHUB_ENV
+    - name: APK derle (lisanslari otomatik kabul et)
+      run: |
+        yes | buildozer -v android debug
+    - name: APK dosyasini kaydet
+      uses: actions/upload-artifact@v4
+      with:
+        name: minik-kasifler-apk
+        path: bin/*.apk
