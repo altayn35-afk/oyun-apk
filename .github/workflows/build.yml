@@ -16,6 +16,10 @@ jobs:
         export DEBIAN_FRONTEND=noninteractive
         sudo -E apt update
         sudo -E apt install -y git zip unzip openjdk-17-jdk python3-pip autoconf libtool pkg-config zlib1g-dev libncurses5-dev cmake libffi-dev libssl-dev
+    - name: Java 17'yi varsayılan yap
+      run: |
+        echo "JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64" >> $GITHUB_ENV
+        echo "/usr/lib/jvm/temurin-17-jdk-amd64/bin" >> $GITHUB_PATH
     - name: Buildozer kur
       run: |
         pip install --upgrade pip
