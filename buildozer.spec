@@ -11,6 +11,7 @@ fullscreen = 1
 android.permissions = INTERNET
 android.minapi = 24
 android.ndk_api = 24
+android.api = 34
 
 [buildozer]
 log_level = 2
