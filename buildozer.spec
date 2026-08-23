@@ -9,6 +9,8 @@ requirements = python3==3.11.9,hostpython3==3.11.9,kivy==2.3.1
 orientation = portrait
 fullscreen = 1
 android.permissions = INTERNET
+android.minapi = 24
+android.ndk_api = 24
 
 [buildozer]
 log_level = 2
