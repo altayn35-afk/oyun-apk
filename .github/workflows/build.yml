@@ -38,3 +38,15 @@ jobs:
         P4A_RELEASE_KEYALIAS: ${{ secrets.KEY_ALIAS }}
         P4A_RELEASE_KEYALIAS_PASSWD: ${{ secrets.KEY_PASSWORD }}
       run: |
+        yes | buildozer -v android release
+    - name: AAB dosyasini kaydet
+      uses: actions/upload-artifact@v4
+      with:
+        name: minik-kasifler-aab
+        path: bin/*.aab
+    - name: APK dosyasini da kaydet (yedek)
+      uses: actions/upload-artifact@v4
+      with:
+        name: minik-kasifler-apk
+        path: bin/*.apk
+      if: always()
