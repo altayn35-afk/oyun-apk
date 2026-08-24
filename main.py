@@ -36,6 +36,60 @@ try:
 except ImportError:
     GTTS_MEVCUT = False
 
+try:
+    from kivmob import KivMob, RewardedListenerInterface
+    KIVMOB_MEVCUT = True
+except ImportError:
+    KIVMOB_MEVCUT = False
+
+ADMOB_APP_ID = "ca-app-pub-4346547259367025~9465488099"
+ADMOB_REWARDED_ID = "ca-app-pub-4346547259367025/2377335561"
+
+_REKLAM_YONETICISI = None
+_ODUL_CALLBACK = None
+
+
+class _OdulDinleyici(RewardedListenerInterface if KIVMOB_MEVCUT else object):
+    def on_rewarded(self, reward_type, amount):
+        if _ODUL_CALLBACK:
+            Clock.schedule_once(lambda dt: _ODUL_CALLBACK())
+
+    def on_rewarded_video_ad_closed(self):
+        Clock.schedule_once(lambda dt: reklam_yeniden_yukle())
+
+
+def reklam_sistemini_baslat():
+    global _REKLAM_YONETICISI
+    if not KIVMOB_MEVCUT:
+        return
+    try:
+        _REKLAM_YONETICISI = KivMob(ADMOB_APP_ID)
+        _REKLAM_YONETICISI.set_rewarded_ad_listener(_OdulDinleyici())
+        _REKLAM_YONETICISI.load_rewarded_ad(ADMOB_REWARDED_ID)
+    except Exception as e:
+        print(f"Reklam sistemi baslatma hatasi: {e}")
+
+
+def reklam_yeniden_yukle():
+    if _REKLAM_YONETICISI:
+        try:
+            _REKLAM_YONETICISI.load_rewarded_ad(ADMOB_REWARDED_ID)
+        except Exception as e:
+            print(f"Reklam yeniden yukleme hatasi: {e}")
+
+
+def reklam_goster(callback):
+    global _ODUL_CALLBACK
+    _ODUL_CALLBACK = callback
+    if _REKLAM_YONETICISI:
+        try:
+            _REKLAM_YONETICISI.show_rewarded_ad()
+        except Exception as e:
+            print(f"Reklam gosterme hatasi: {e}")
+            callback()
+    else:
+        callback()
+
 ASSETS_KLASORU = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets")
 
 # ==========================================
@@ -411,10 +465,12 @@ def can_bitti_popup_goster(app, oyun_kodu, tekrar_baslat_callback, menuye_don_ca
     popup = Popup(title="", separator_height=0, size_hint=(0.85, 0.55), auto_dismiss=False)
 
     def can_kazan(*a):
-        app.canlar = min(app.max_can, app.canlar + 1)
-        ses_efekti_cal("alkis")
-        popup.dismiss()
-        menuye_don_callback()
+        def odul_verildi():
+            app.canlar = min(app.max_can, app.canlar + 1)
+            ses_efekti_cal("alkis")
+            popup.dismiss()
+            menuye_don_callback()
+        reklam_goster(odul_verildi)
 
     def menuye_git(*a):
         popup.dismiss()
@@ -1426,6 +1482,7 @@ class MinikKasiflerApp(App):
         self.sm.add_widget(SekilOyunuEkrani(name="sekil"))
         self.sm.add_widget(BulmacaOyunuEkrani(name="bulmaca"))
         muzik_baslat()
+        reklam_sistemini_baslat()
         self.sm.current = "giris"
 
     def _can_zamanlayicisi(self, dt):
