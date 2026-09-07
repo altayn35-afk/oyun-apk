@@ -11,7 +11,7 @@ fullscreen = 1
 android.permissions = INTERNET, ACCESS_NETWORK_STATE
 android.minapi = 24
 android.ndk_api = 24
-android.api = 34
+android.api = 36
 android.enable_androidx = True
 android.gradle_dependencies = com.google.firebase:firebase-ads:23.6.0
 android.meta_data = com.google.android.gms.ads.APPLICATION_ID=ca-app-pub-4346547259367025~9465488099
