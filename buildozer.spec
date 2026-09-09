@@ -5,6 +5,7 @@ package.domain = org.oyun
 source.dir = .
 source.include_exts = py,png,jpg,kv,atlas,mp3,wav
 version = 0.1
+android.numeric_version = 10242
 requirements = python3==3.11.9,hostpython3==3.11.9,kivy==2.3.1,android,jnius,https://github.com/MichaelStott/KivMob/archive/refs/heads/master.zip
 orientation = portrait
 fullscreen = 1
