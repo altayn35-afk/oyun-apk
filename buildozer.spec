@@ -1,22 +1,54 @@
 [app]
-title = Oyunum
-package.name = oyunum
-package.domain = org.oyun
-source.dir = .
+
+# (str) Title of your application
+title = Minik Kasifler Atolyesi
+
+# (str) Package name
+package.name = minikkasifler
+
+# (str) Package domain (needed for android packaging)
+package.domain = org.minikkasifler
+
+# (list) Source files to include (let it empty to include all files)
 source.include_exts = py,png,jpg,kv,atlas,mp3,wav
-version = 0.1
-android.numeric_version = 10242
-requirements = python3==3.11.9,hostpython3==3.11.9,kivy==2.3.1,android,jnius,https://github.com/MichaelStott/KivMob/archive/refs/heads/master.zip
+
+# (list) Source files to exclude (let it empty to exclude nothing)
+source.exclude_exts = spec
+
+# (list) List of directory to exclude (let it empty to exclude nothing)
+source.exclude_dirs = tests, bin, .git
+
+# (list) Application requirements
+# comma separated e.g. requirements = sqlite3,kivy
+requirements = python3,kivy,gtts,kivmob,charset-normalizer,urllib3,idna,certifi,requests
+
+# (str) Supported orientations
 orientation = portrait
-fullscreen = 1
+
+#
+# Android specific
+#
+
+# (bool) Indicate if the application should be fullscreen or not
+fullscreen = 0
+
+# (list) Permissions
 android.permissions = INTERNET, ACCESS_NETWORK_STATE
-android.minapi = 24
-android.ndk_api = 24
-android.api = 36
-android.enable_androidx = True
-android.gradle_dependencies = com.google.firebase:firebase-ads:23.6.0
-android.meta_data = com.google.android.gms.ads.APPLICATION_ID=ca-app-pub-4346547259367025~9465488099
+
+# (str) Supported orientations (portrait, landscape)
+osx.python_version = 3
+osx.kivy_version = 1.9.1
+
+# (list) The Android archs to build for,, can be armeabi-v7a, arm64-v8a, x86, x86_64
+android.archs = arm64-v8a, armeabi-v7a
+
+# Android SDK lisanslarini otomatik kabul et (Hatanin cozumu burasi)
+android.accept_sdk_license = True
 
 [buildozer]
+
+# (int) Log level (0 = error only, 1 = info, 2 = debug (with command output))
 log_level = 2
-warn_on_root = 1
+
+# (int) Display warning if buildozer is run as root (0 = False, 1 = True)
+warn_root = 1
