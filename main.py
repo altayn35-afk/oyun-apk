@@ -1,13 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-MINIK KASIFLER ATOLYESI - KIVY SURUMU (TAM)
-Android'e derlenebilir hale getirmek icin pygame yerine Kivy'nin kendi
-ses motoru (SoundLoader) kullanildi - bu, buildozer derlemesindeki
-'longintrepr.h' hatasinin kaynagi olan pygame bagimliligini tamamen kaldirir.
-
-Masaustunde test icin:
-    pip install kivy --break-system-packages
-    python3 main.py
+MINIK KASIFLER ATOLYESI - KIVY SURUMU (GUNCellenmis + ADMOB + YENI OZELLIKLER)
 """
 
 import math
@@ -42,8 +35,9 @@ try:
 except ImportError:
     KIVMOB_MEVCUT = False
 
-ADMOB_APP_ID = "ca-app-pub-4346547259367025~9465488099"
-ADMOB_REWARDED_ID = "ca-app-pub-4346547259367025/2377335561"
+# AdMob Kimlikleri (Gonderdiginiz guncel ID'ler)
+ADMOB_APP_ID = "ca-app-pub-1540771956171830~3252252740"[cite: 1]
+ADMOB_REWARDED_ID = "ca-app-pub-1540771956171830/9097896782"[cite: 1]
 
 _REKLAM_YONETICISI = None
 _ODUL_CALLBACK = None
@@ -93,7 +87,7 @@ def reklam_goster(callback):
 ASSETS_KLASORU = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets")
 
 # ==========================================
-# SES YONETIMI (Kivy SoundLoader - pygame YOK)
+# SES YONETIMI
 # ==========================================
 SES_ACIK = True
 _SES_CACHE = {}
@@ -132,7 +126,6 @@ def muzik_baslat():
         return
     dosya = _ses_dosyasi("fon_muzigi.mp3")
     if not dosya:
-        # kok klasorde de arayalim (kullanici kendi mp3'unu koymus olabilir)
         kok = os.path.dirname(os.path.abspath(__file__))
         for f in os.listdir(kok):
             if f.lower().endswith(".mp3"):
@@ -213,40 +206,84 @@ RENK_SOZLUGU = {
 SEKIL_TIPLERI = ["Yuvarlak", "Kare", "Ucgen", "Yildiz"]
 
 
-def hex_karistir(renk, katsayi=1.0):
-    r, g, b, a = renk
-    return (min(1, r * katsayi), min(1, g * katsayi), min(1, b * katsayi), a)
+def format_sure(saniye):
+    saniye = max(0, int(saniye))
+    return f"{saniye // 60}:{saniye % 60:02d}"
 
 
-def olcek():
-    """Telefon/tablet gibi farkli ekran boyutlarinda oyun ogelerinin (balon, ari,
-    engel, kart vb.) hep ayni gorunmesini saglayan olcek katsayisi. Kucuk ekranda
-    1.0 civari, buyuk ekran/tablette daha buyuk deger doner."""
-    try:
-        taban = min(Window.width / 400.0, Window.height / 700.0)
-    except Exception:
-        taban = 1.0
-    return max(0.9, min(taban, 2.4))
-
-
-class RenkliArkaplan(FloatLayout):
-    def __init__(self, renk=(0.44, 0.84, 1, 1), **kwargs):
+class KalpGostergesi(Widget):
+    def __init__(self, canlar=0, maxcan=3, **kwargs):
         super().__init__(**kwargs)
-        with self.canvas.before:
-            Color(*renk)
-            self.rect = Rectangle(size=self.size, pos=self.pos)
-        self.bind(size=self._g, pos=self._g)
+        self.canlar = canlar
+        self.maxcan = maxcan
+        self.bind(size=self._ciz, pos=self._ciz)
 
-    def _g(self, *a):
-        self.rect.size = self.size
-        self.rect.pos = self.pos
+    def guncelle(self, canlar, maxcan):
+        self.canlar = canlar
+        self.maxcan = maxcan
+        self._ciz()
+
+    @staticmethod
+    def _tek_kalp(cx, cy, b, dolu):
+        r = b * 0.27
+        if dolu:
+            Color(0.90, 0.18, 0.22, 1)
+        else:
+            Color(0.72, 0.72, 0.76, 1)
+        Ellipse(pos=(cx - r * 1.9, cy - r * 0.25), size=(r * 2, r * 2))
+        Ellipse(pos=(cx - r * 0.1, cy - r * 0.25), size=(r * 2, r * 2))
+        Triangle(points=[cx - r * 1.85, cy + r * 0.35, cx + r * 1.85, cy + r * 0.35, cx, cy - b * 0.42])
+
+    def _ciz(self, *a):
+        self.canvas.clear()
+        w, h = self.size
+        if w <= 1 or h <= 1 or self.maxcan <= 0:
+            return
+        with self.canvas:
+            boyut = min(h * 0.9, w / self.maxcan * 0.9)
+            bosluk = max(2, (w - boyut * self.maxcan) / (self.maxcan + 1))
+            for i in range(self.maxcan):
+                cx = self.x + bosluk * (i + 1) + boyut * i + boyut / 2
+                cy = self.y + h / 2
+                self._tek_kalp(cx, cy, boyut, i < self.canlar)
+
+
+class IkonKutusu(Widget):
+    def __init__(self, cizim_fn, **kwargs):
+        super().__init__(**kwargs)
+        self._cizim_fn = cizim_fn
+        self.bind(size=self._ciz, pos=self._ciz)
+
+    def _ciz(self, *a):
+        self.canvas.clear()
+        w, h = self.size
+        if w <= 1 or h <= 1:
+            return
+        with self.canvas:
+            self._cizim_fn(self.x + w / 2, self.y + h / 2, min(w, h))
+
+
+def _ikon_balon(cx, cy, b):
+    Color(1, 0.30, 0.30, 1)
+    Ellipse(pos=(cx - b * 0.28, cy - b * 0.08), size=(b * 0.56, b * 0.56))
+
+
+def _ikon_ari(cx, cy, b):
+    Color(1, 0.76, 0.03, 1)
+    Ellipse(pos=(cx - b * 0.32, cy - b * 0.20), size=(b * 0.64, b * 0.42))
+
+
+def _ikon_sekil(cx, cy, b):
+    Color(0.20, 0.60, 0.86, 1)
+    Ellipse(pos=(cx - b * 0.36, cy - b * 0.05), size=(b * 0.30, b * 0.30))
+
+
+def _ikon_kart(cx, cy, b):
+    Color(0.20, 0.60, 0.86, 1)
+    Rectangle(pos=(cx - b * 0.32, cy - b * 0.24), size=(b * 0.30, b * 0.44))
 
 
 class EnerjikArkaplan(FloatLayout):
-    """Cocuklarin dikkatini cekecek canli bir arka plan: gokyuzu gradyani,
-    gunes, bulutlar ve parlayan noktalar. Resim dosyasina ihtiyac duymadan
-    tamamen vektorel cizilir, boylece eksik dosya sorunu da olmaz."""
-
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.bind(size=self._yeniden_ciz, pos=self._yeniden_ciz)
@@ -269,200 +306,50 @@ class EnerjikArkaplan(FloatLayout):
                 Color(r, g, b, 1)
                 Rectangle(pos=(self.x, self.y + h - (i + 1) * (h / adim) - 1), size=(w, h / adim + 2))
 
-            gunes_r = min(w, h) * 0.13
-            gx, gy = self.x + w * 0.78, self.y + h * 0.80
-            Color(1, 0.85, 0.3, 0.45)
-            Ellipse(pos=(gx - gunes_r * 1.5, gy - gunes_r * 1.5), size=(gunes_r * 3, gunes_r * 3))
-            Color(1, 0.92, 0.4, 1)
-            Ellipse(pos=(gx - gunes_r, gy - gunes_r), size=(gunes_r * 2, gunes_r * 2))
-
-            for bx, by, bs in [(0.15, 0.74, 1.0), (0.45, 0.88, 0.7), (0.68, 0.62, 0.55)]:
-                cx, cy = self.x + w * bx, self.y + h * by
-                r = min(w, h) * 0.055 * bs
-                Color(1, 1, 1, 0.85)
-                Ellipse(pos=(cx - r * 1.4, cy - r * 0.6), size=(r * 2.2, r * 1.2))
-                Ellipse(pos=(cx - r * 0.4, cy - r * 0.9), size=(r * 1.8, r * 1.4))
-                Ellipse(pos=(cx + r * 0.6, cy - r * 0.6), size=(r * 1.8, r * 1.1))
-
-            random.seed(42)
-            for _ in range(14):
-                Color(1, 1, 1, random.uniform(0.4, 0.9))
-                px = self.x + w * random.random()
-                py = self.y + h * random.uniform(0.45, 1.0)
-                s = random.uniform(2, 5)
-                Ellipse(pos=(px, py), size=(s, s))
-            random.seed()
-
-
-def format_sure(saniye):
-    saniye = max(0, int(saniye))
-    return f"{saniye // 60}:{saniye % 60:02d}"
-
-
-class KalpGostergesi(Widget):
-    """Yaziyla/emoji ile degil, doğrudan çizilerek gösterilen kalp ikonlari.
-    Boylece font/emoji destegi olmayan cihazlarda da (kare/kutu yerine)
-    her zaman gercek bir kalp gorunur."""
-
-    def __init__(self, canlar=0, maxcan=3, **kwargs):
-        super().__init__(**kwargs)
-        self.canlar = canlar
-        self.maxcan = maxcan
-        self.bind(size=self._ciz, pos=self._ciz)
-
-    def guncelle(self, canlar, maxcan):
-        self.canlar = canlar
-        self.maxcan = maxcan
-        self._ciz()
-
-    @staticmethod
-    def _tek_kalp(cx, cy, b, dolu):
-        r = b * 0.27
-        if dolu:
-            Color(0.90, 0.18, 0.22, 1)
-        else:
-            Color(0.72, 0.72, 0.76, 1)
-        Ellipse(pos=(cx - r * 1.9, cy - r * 0.25), size=(r * 2, r * 2))
-        Ellipse(pos=(cx - r * 0.1, cy - r * 0.25), size=(r * 2, r * 2))
-        Triangle(points=[cx - r * 1.85, cy + r * 0.35, cx + r * 1.85, cy + r * 0.35, cx, cy - b * 0.42])
-        if dolu:
-            Color(1, 1, 1, 0.55)
-            Ellipse(pos=(cx - r * 1.55, cy + r * 0.35), size=(r * 0.7, r * 0.55))
-
-    def _ciz(self, *a):
-        self.canvas.clear()
-        w, h = self.size
-        if w <= 1 or h <= 1 or self.maxcan <= 0:
-            return
-        with self.canvas:
-            boyut = min(h * 0.9, w / self.maxcan * 0.9)
-            bosluk = max(2, (w - boyut * self.maxcan) / (self.maxcan + 1))
-            for i in range(self.maxcan):
-                cx = self.x + bosluk * (i + 1) + boyut * i + boyut / 2
-                cy = self.y + h / 2
-                self._tek_kalp(cx, cy, boyut, i < self.canlar)
-
-
-class IkonKutusu(Widget):
-    """Menudeki oyun butonlarinin yanina konan kucuk, o oyunu temsil eden
-    vektorel ikon (balon, ari, sekiller, kartlar)."""
-
-    def __init__(self, cizim_fn, **kwargs):
-        super().__init__(**kwargs)
-        self._cizim_fn = cizim_fn
-        self.bind(size=self._ciz, pos=self._ciz)
-
-    def _ciz(self, *a):
-        self.canvas.clear()
-        w, h = self.size
-        if w <= 1 or h <= 1:
-            return
-        with self.canvas:
-            self._cizim_fn(self.x + w / 2, self.y + h / 2, min(w, h))
-
-
-def _ikon_balon(cx, cy, b):
-    Color(1, 0.30, 0.30, 1)
-    Ellipse(pos=(cx - b * 0.28, cy - b * 0.08), size=(b * 0.56, b * 0.56))
-    Color(1, 1, 1, 0.5)
-    Ellipse(pos=(cx - b * 0.14, cy + b * 0.24), size=(b * 0.14, b * 0.10))
-    Color(0.3, 0.3, 0.3, 1)
-    Line(points=[cx, cy - b * 0.08, cx, cy - b * 0.38], width=1.3)
-
-
-def _ikon_ari(cx, cy, b):
-    Color(1, 0.76, 0.03, 1)
-    Ellipse(pos=(cx - b * 0.32, cy - b * 0.20), size=(b * 0.64, b * 0.42))
-    Color(0.2, 0.15, 0.1, 1)
-    Rectangle(pos=(cx - b * 0.10, cy - b * 0.20), size=(b * 0.08, b * 0.42))
-    Rectangle(pos=(cx + b * 0.05, cy - b * 0.20), size=(b * 0.08, b * 0.42))
-    Color(0.85, 0.93, 0.95, 0.85)
-    Ellipse(pos=(cx - b * 0.30, cy + b * 0.06), size=(b * 0.34, b * 0.30))
-    Ellipse(pos=(cx - b * 0.02, cy + b * 0.06), size=(b * 0.34, b * 0.30))
-
-
-def _ikon_sekil(cx, cy, b):
-    Color(0.20, 0.60, 0.86, 1)
-    Ellipse(pos=(cx - b * 0.36, cy - b * 0.05), size=(b * 0.30, b * 0.30))
-    Color(0.95, 0.77, 0.06, 1)
-    Rectangle(pos=(cx + b * 0.02, cy - b * 0.05), size=(b * 0.30, b * 0.30))
-    Color(0.90, 0.49, 0.13, 1)
-    Triangle(points=[cx - b * 0.05, cy - b * 0.36, cx - b * 0.30, cy - b * 0.06, cx + b * 0.20, cy - b * 0.06])
-
-
-def _ikon_kart(cx, cy, b):
-    Color(0.20, 0.60, 0.86, 1)
-    Rectangle(pos=(cx - b * 0.32, cy - b * 0.24), size=(b * 0.30, b * 0.44))
-    Color(1, 0.84, 0.20, 1)
-    Rectangle(pos=(cx - b * 0.02, cy - b * 0.14), size=(b * 0.30, b * 0.44))
-    Color(1, 1, 1, 1)
-    Line(rectangle=(cx - b * 0.32, cy - b * 0.24, b * 0.30, b * 0.44), width=1)
-    Line(rectangle=(cx - b * 0.02, cy - b * 0.14, b * 0.30, b * 0.44), width=1)
-
 
 # ==========================================
-# UST PANEL: CAN + SES BUTONU (tum oyun ekranlarinda ortak)
+# UST PANEL
 # ==========================================
 class UstPanel(BoxLayout):
     def __init__(self, app, geri_callback, **kwargs):
-        super().__init__(orientation="horizontal", size_hint=(1, None), height=50,
-                          padding=8, spacing=8, **kwargs)
+        super().__init__(orientation="horizontal", size_hint=(1, None), height=45,
+                         padding=6, spacing=6, **kwargs)
         self.app = app
 
         self.btn_geri = Button(text="< Menu", size_hint=(0.2, 1),
-                                background_color=(0.90, 0.30, 0.30, 1), bold=True)
+                               background_color=(0.90, 0.30, 0.30, 1), bold=True)
         self.btn_geri.bind(on_release=lambda *a: geri_callback())
         self.add_widget(self.btn_geri)
 
         self.kalp_gosterge = KalpGostergesi(app.canlar, app.max_can, size_hint=(0.35, 1))
         self.add_widget(self.kalp_gosterge)
 
-        self.lbl_sure = Label(text="", font_size="11sp", size_hint=(0.15, 1),
-                               color=(1, 1, 1, 1))
+        self.lbl_sure = Label(text="", font_size="10sp", size_hint=(0.2, 1), color=(1, 1, 1, 1))
         self.add_widget(self.lbl_sure)
 
-        self.btn_ses = Button(text="Ses Acik" if SES_ACIK else "Ses Kapali",
-                               size_hint=(0.3, 1),
-                               background_color=(0.18, 0.80, 0.44, 1) if SES_ACIK else (0.90, 0.30, 0.30, 1))
+        self.btn_ses = Button(text="Ses" if SES_ACIK else "Sessiz", size_hint=(0.25, 1),
+                              background_color=(0.18, 0.80, 0.44, 1) if SES_ACIK else (0.90, 0.30, 0.30, 1))
         self.btn_ses.bind(on_release=self.ses_degistir)
         self.add_widget(self.btn_ses)
-
-        Clock.schedule_interval(self._sure_guncelle, 1)
-
-    def _sure_guncelle(self, dt):
-        if self.app.canlar < self.app.max_can:
-            self.lbl_sure.text = f"+1 can:\n{format_sure(self.app.kalan_can_suresi)}"
-        else:
-            self.lbl_sure.text = ""
-        return True
 
     def ses_guncelle(self):
         self.kalp_gosterge.guncelle(self.app.canlar, self.app.max_can)
 
     def ses_degistir(self, *a):
         acik = genel_ses_ac_kapa()
-        self.btn_ses.text = "Ses Acik" if acik else "Ses Kapali"
+        self.btn_ses.text = "Ses" if acik else "Sessiz"
         self.btn_ses.background_color = (0.18, 0.80, 0.44, 1) if acik else (0.90, 0.30, 0.30, 1)
 
 
 # ==========================================
 # CAN BITTI POPUP
 # ==========================================
-def can_bitti_popup_goster(app, oyun_kodu, tekrar_baslat_callback, menuye_don_callback):
-    mesajlar = {
-        "balon": ("Eyvah, Balonlar Gokyuzune Kacti!", "SIHIRLI IGNE ICIN +1 CAN"),
-        "ari": ("Sevimli Ari Yorgun Dustu!", "ARIYI KURTARMAK ICIN +1 CAN"),
-        "sekil": ("Tum Ipuclari Saklandi!", "SUPER BUYUTEC ICIN +1 CAN"),
-        "bulmaca": ("Sihirli Kule Bloklari Bitti!", "KULEYI BUYUTMEK ICIN +1 CAN"),
-    }
-    alt_metin, buton_metni = mesajlar.get(oyun_kodu, ("Macera Yarida Kaldi!", "+1 CAN KAZAN"))
-
+def can_bitti_popup_goster(app, oyun_kodu, menuye_don_callback):
     icerik = BoxLayout(orientation="vertical", spacing=10, padding=10)
-    icerik.add_widget(Label(text="CANLARIN BITTI!", font_size="22sp", bold=True,
-                             color=(1, 0.3, 0.3, 1), size_hint=(1, 0.3)))
-    icerik.add_widget(Label(text=alt_metin, font_size="14sp", color=(1, 0.9, 0.4, 1), size_hint=(1, 0.2)))
+    icerik.add_widget(Label(text="CANLARIN BITTI!", font_size="20sp", bold=True, color=(1, 0.3, 0.3, 1), size_hint=(1, 0.3)))
+    icerik.add_widget(Label(text="Devam etmek icin reklam izle!", font_size="13sp", color=(1, 0.9, 0.4, 1), size_hint=(1, 0.2)))
 
-    popup = Popup(title="", separator_height=0, size_hint=(0.85, 0.55), auto_dismiss=False)
+    popup = Popup(title="", separator_height=0, size_hint=(0.8, 0.5), auto_dismiss=False)
 
     def can_kazan(*a):
         def odul_verildi():
@@ -476,13 +363,11 @@ def can_bitti_popup_goster(app, oyun_kodu, tekrar_baslat_callback, menuye_don_ca
         popup.dismiss()
         menuye_don_callback()
 
-    btn_reklam = Button(text=buton_metni, size_hint=(1, 0.25),
-                         background_color=(0.18, 0.80, 0.44, 1), bold=True)
+    btn_reklam = Button(text="REKLAM IZLE & +1 CAN", size_hint=(1, 0.3), background_color=(0.18, 0.80, 0.44, 1), bold=True)
     btn_reklam.bind(on_release=can_kazan)
     icerik.add_widget(btn_reklam)
 
-    btn_menu = Button(text="Menuye Don", size_hint=(1, 0.25),
-                       background_color=(0.90, 0.30, 0.30, 1))
+    btn_menu = Button(text="Menuye Don", size_hint=(1, 0.3), background_color=(0.90, 0.30, 0.30, 1))
     btn_menu.bind(on_release=menuye_git)
     icerik.add_widget(btn_menu)
 
@@ -491,32 +376,19 @@ def can_bitti_popup_goster(app, oyun_kodu, tekrar_baslat_callback, menuye_don_ca
 
 
 # ==========================================
-# EKRAN 0: YUKLEME (SPLASH) EKRANI
-# Uygulama acilir acilmaz hemen gorunur, boylece siyah ekranda
-# bekleme hissi olmaz; diger agir ekranlar arka planda kurulur.
+# EKRAN 0: YUKLEME EKRANI
 # ==========================================
 class YuklemeEkrani(Screen):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         kok = EnerjikArkaplan()
-        icerik = BoxLayout(orientation="vertical", padding=30, spacing=14,
-                            size_hint=(0.8, 0.3),
-                            pos_hint={"center_x": 0.5, "center_y": 0.5})
-        icerik.add_widget(Label(text="MINIK KASIFLER ATOLYESI", font_size="22sp", bold=True,
-                                 color=(1, 1, 1, 1)))
-        self.lbl_durum = Label(text="Hazirlaniyor", font_size="16sp", color=(1, 0.95, 0.6, 1))
+        icerik = BoxLayout(orientation="vertical", padding=30, spacing=14, size_hint=(0.8, 0.3),
+                           pos_hint={"center_x": 0.5, "center_y": 0.5})
+        icerik.add_widget(Label(text="MINIK KASIFLER", font_size="22sp", bold=True, color=(1, 1, 1, 1)))
+        self.lbl_durum = Label(text="Hazirlaniyor...", font_size="15sp", color=(1, 0.95, 0.6, 1))
         icerik.add_widget(self.lbl_durum)
         kok.add_widget(icerik)
         self.add_widget(kok)
-        self._nokta = 0
-        self._olay = Clock.schedule_interval(self._animasyon, 0.4)
-
-    def _animasyon(self, dt):
-        self._nokta = (self._nokta + 1) % 4
-        self.lbl_durum.text = "Hazirlaniyor" + "." * self._nokta
-        if self.manager is None or self.manager.current != "yukleme":
-            self._olay.cancel()
-            return False
 
 
 # ==========================================
@@ -526,26 +398,14 @@ class GirisEkrani(Screen):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         kok = EnerjikArkaplan()
-
-        icerik = BoxLayout(orientation="vertical", padding=40, spacing=18,
-                            size_hint=(0.85, 0.55),
-                            pos_hint={"center_x": 0.5, "center_y": 0.5})
-
-        icerik.add_widget(Label(text="MINIK KASIFLER ATOLYESI", font_size="26sp", bold=True,
-                                 color=(1, 0.84, 0.2, 1), size_hint=(1, 0.3)))
-        icerik.add_widget(Label(text="Eglenceli Ogrenme Dunyasina Hos Geldin!",
-                                 font_size="15sp", color=(0.3, 1, 1, 1), size_hint=(1, 0.15)))
-
-        self.isim_kutusu = TextInput(hint_text="Adin Nedir Minik Kasif?", multiline=False,
-                                      font_size="18sp", size_hint=(1, 0.18), halign="center",
-                                      padding_y=(15, 15))
+        icerik = BoxLayout(orientation="vertical", padding=35, spacing=15, size_hint=(0.8, 0.5),
+                           pos_hint={"center_x": 0.5, "center_y": 0.5})
+        icerik.add_widget(Label(text="MINIK KASIFLER", font_size="24sp", bold=True, color=(1, 0.84, 0.2, 1)))
+        self.isim_kutusu = TextInput(hint_text="Adin Nedir?", multiline=False, font_size="16sp", size_hint=(1, 0.25), halign="center")
         icerik.add_widget(self.isim_kutusu)
-
-        btn_basla = Button(text="MACERAYA BASLA", font_size="18sp", bold=True,
-                            background_color=(1, 0.30, 0.10, 1), size_hint=(1, 0.2))
+        btn_basla = Button(text="OYUNA BASLA", font_size="16sp", bold=True, background_color=(1, 0.30, 0.10, 1), size_hint=(1, 0.3))
         btn_basla.bind(on_release=self.oyuna_basla)
         icerik.add_widget(btn_basla)
-
         kok.add_widget(icerik)
         self.add_widget(kok)
 
@@ -555,8 +415,6 @@ class GirisEkrani(Screen):
         if isim:
             app.cocuk_ismi = isim
         ses_efekti_cal("tin")
-        menu = self.manager.get_screen("menu")
-        menu.guncelle()
         self.manager.current = "menu"
 
 
@@ -567,39 +425,23 @@ class MenuEkrani(Screen):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.kok = EnerjikArkaplan()
-        self.dis = BoxLayout(orientation="vertical", padding=25, spacing=12)
-        self._sayac_kuruldu = False
-
-        self.baslik = Label(text="Oyununu Sec!", font_size="20sp", bold=True,
-                             color=(0.55, 0.90, 0.60, 1), size_hint=(1, 0.12))
+        self.dis = BoxLayout(orientation="vertical", padding=20, spacing=10)
+        self.baslik = Label(text="Oyununu Sec!", font_size="18sp", bold=True, color=(0.55, 0.90, 0.60, 1), size_hint=(1, 0.1))
         self.dis.add_widget(self.baslik)
 
-        can_satiri = BoxLayout(orientation="horizontal", size_hint=(1, 0.10), spacing=8)
-        self.kalp_gosterge = KalpGostergesi(0, 0, size_hint=(0.55, 1))
-        can_satiri.add_widget(self.kalp_gosterge)
-        self.lbl_sure = Label(text="", font_size="13sp", color=(1, 1, 1, 1), size_hint=(0.45, 1))
-        can_satiri.add_widget(self.lbl_sure)
-        self.dis.add_widget(can_satiri)
-
         oyunlar = [
-            ("Balon Patlatma Macerasi", (1, 0.30, 0.10, 1), "balon", _ikon_balon),
-            ("Bal Pesinde Neseli Ari", (1, 0.70, 0.10, 1), "ari", _ikon_ari),
-            ("Sekil ve Renk Avcisi", (0.18, 0.55, 0.34, 1), "sekil", _ikon_sekil),
-            ("Surpriz Bulmaca Kulesi", (0.83, 0.33, 0.0, 1), "bulmaca", _ikon_kart),
+            ("Balon Patlatma", (1, 0.30, 0.10, 1), "balon", _ikon_balon),
+            ("Neseli Ari", (1, 0.70, 0.10, 1), "ari", _ikon_ari),
+            ("Sekil Avcisi", (0.18, 0.55, 0.34, 1), "sekil", _ikon_sekil),
+            ("Bulmaca Kulesi", (0.83, 0.33, 0.0, 1), "bulmaca", _ikon_kart),
         ]
         for metin, renk, kod, ikon_fn in oyunlar:
-            satir = BoxLayout(orientation="horizontal", size_hint=(1, 0.15), spacing=8)
-            satir.add_widget(IkonKutusu(ikon_fn, size_hint=(0.16, 1)))
-            btn = Button(text=metin, font_size="16sp", bold=True, background_color=renk,
-                         size_hint=(0.84, 1))
+            satir = BoxLayout(orientation="horizontal", size_hint=(1, 0.14), spacing=8)
+            satir.add_widget(IkonKutusu(ikon_fn, size_hint=(0.15, 1)))
+            btn = Button(text=metin, font_size="15sp", bold=True, background_color=renk, size_hint=(0.85, 1))
             btn.bind(on_release=lambda inst, k=kod: self.oyun_sec(k))
             satir.add_widget(btn)
             self.dis.add_widget(satir)
-
-        btn_isim = Button(text="Isim Degistir", font_size="12sp",
-                           background_color=(0.16, 0.5, 0.73, 1), size_hint=(1, 0.09))
-        btn_isim.bind(on_release=lambda *a: setattr(self.manager, "current", "giris"))
-        self.dis.add_widget(btn_isim)
 
         self.kok.add_widget(self.dis)
         self.add_widget(self.kok)
@@ -607,52 +449,45 @@ class MenuEkrani(Screen):
     def guncelle(self):
         app = App.get_running_app()
         self.baslik.text = f"Sevgili {app.cocuk_ismi}, Oyununu Sec!"
-        self.kalp_gosterge.guncelle(app.canlar, app.max_can)
-        if app.canlar < app.max_can:
-            self.lbl_sure.text = f"+1 can: {format_sure(app.kalan_can_suresi)}"
-        else:
-            self.lbl_sure.text = ""
-        if not self._sayac_kuruldu:
-            Clock.schedule_interval(lambda dt: self.guncelle() if self.manager.current == "menu" else False, 1)
-            self._sayac_kuruldu = True
 
     def on_enter(self):
         self.guncelle()
-        muzik_ses_seviyesi_ayarla(0.5)
 
     def oyun_sec(self, kod):
         app = App.get_running_app()
         ses_efekti_cal("tin")
         if app.canlar <= 0:
-            can_bitti_popup_goster(app, kod, None, lambda: setattr(self.manager, "current", "menu"))
+            can_bitti_popup_goster(app, kod, lambda: setattr(self.manager, "current", "menu"))
             return
         self.manager.current = kod
         self.manager.get_screen(kod).oyunu_baslat()
 
 
 # ==========================================
-# OYUN 1: BALON PATLATMA
+# OYUN 1: BALON PATLATMA (Tuzak Balonlu & Kompakt Alan)
 # ==========================================
 class BalonOyunuEkrani(Screen):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.app = None
         self.kok = EnerjikArkaplan()
-        self.dis = BoxLayout(orientation="vertical")
+        self.dis = BoxLayout(orientation="vertical", padding=10, spacing=5)
 
-        self.oyun_alani = Widget()
+        # Kompakt/Kucultulmus Oyun Alani Container'i
+        self.cerceve = FloatLayout(size_hint=(1, 0.85))
+        self.oyun_alani = Widget(size_hint=(0.9, 0.9), pos_hint={"center_x": 0.5, "center_y": 0.5})
         self.oyun_alani.bind(on_touch_down=self.dokunuldu)
+        self.cerceve.add_widget(self.oyun_alani)
 
-        self.lbl_skor = Label(text="Puan: 0 | Seviye: 1", size_hint=(1, None), height=30,
-                               color=(1, 1, 1, 1), bold=True)
+        self.lbl_skor = Label(text="Puan: 0 | Seviye: 1", size_hint=(1, None), height=35, color=(1, 1, 1, 1), bold=True)
 
         self.dis.add_widget(self.lbl_skor)
-        self.dis.add_widget(self.oyun_alani)
+        self.dis.add_widget(self.cerceve)
         self.kok.add_widget(self.dis)
         self.add_widget(self.kok)
-
         self.ust_panel = None
         self._olay = None
+        self.balonlar = []
 
     def _panel_kur(self):
         if self.ust_panel is None:
@@ -670,85 +505,108 @@ class BalonOyunuEkrani(Screen):
         self._panel_kur()
         self.puan = 0
         self.seviye = 1
+        self.balon_sayaci = 0
         self.oyun_aktif = True
+        self.balonlar = []
         muzik_ses_seviyesi_ayarla(0.2)
-        self.yeni_balon()
         if self._olay:
             self._olay.cancel()
         self._olay = Clock.schedule_interval(self.adim, 1 / 30)
 
-    def yeni_balon(self):
-        genislik = self.oyun_alani.width or 400
-        self.balon_x = random.uniform(60, max(80, genislik - 60))
-        self.balon_y = -20
-        self.balon_aci = 0
-        self.balon_renk = random.choice(BALON_RENKLERI)
-
     def adim(self, dt):
         if not self.oyun_aktif:
             return
-        h = self.oyun_alani.height or 600
-        w = self.oyun_alani.width or 400
+        w = self.oyun_alani.width or 350
+        h = self.oyun_alani.height or 450
 
-        hiz = 2.0 + self.seviye * 0.8
-        self.balon_y += hiz
-        self.balon_aci += 0.08
-        self.balon_x += math.sin(self.balon_aci) * 2
-        kenar = 48 * olcek()
-        self.balon_x = max(kenar, min(w - kenar, self.balon_x))
+        # Balon uretme sikligi
+        if random.random() < 0.035:
+            self.balon_sayaci += 1
+            tuzak = (self.balon_sayaci % 7 == 0) # Her 7-8 balon bir tuzak balon!
+            self.balonlar.append({
+                "x": random.uniform(40, w - 40),
+                "y": -30,
+                "hiz": 1.5 + self.seviye * 0.4,
+                "renk": (0.1, 0.1, 0.1, 1) if tuzak else random.choice(BALON_RENKLERI),
+                "tuzak": tuzak,
+                "aci": random.uniform(0, 10)
+            })
 
+        yeni_balonlar = []
+        for b in self.balonlar:
+            b["y"] += b["hiz"]
+            b["aci"] += 0.05
+            b["x"] += math.sin(b["aci"]) * 1.5
+            if b["y"] < h + 30:
+                yeni_balonlar.append(b)
+            elif not b["tuzak"]:
+                self._can_azalt()
+        self.balonlar = yeni_balonlar
+
+        # Cizim
         self.oyun_alani.canvas.clear()
         with self.oyun_alani.canvas:
-            r = 48 * olcek()
-            Color(*self.balon_renk)
-            Ellipse(pos=(self.balon_x - r, self.balon_y - r), size=(r * 2, r * 2))
-            Color(1, 1, 1, 0.5)
-            Ellipse(pos=(self.balon_x - r * 0.4, self.balon_y + r * 0.2), size=(r * 0.5, r * 0.35))
-            Color(0.3, 0.3, 0.3, 1)
-            Line(points=[self.balon_x, self.balon_y - r, self.balon_x, self.balon_y - r - 25], width=1.2)
-
-        if self.balon_y > h + 40:
-            self.yeni_balon()
-            self._can_azalt()
+            for b in self.balonlar:
+                r = 30
+                Color(*b["renk"])
+                Ellipse(pos=(self.oyun_alani.x + b["x"] - r, self.oyun_alani.y + b["y"] - r), size=(r * 2, r * 2))
+                if b["tuzak"]:
+                    # Tuzak balonu uzerinde carpi isareti
+                    Color(1, 1, 1, 1)
+                    Line(points=[self.oyun_alani.x + b["x"] - 12, self.oyun_alani.y + b["y"] - 12,
+                                 self.oyun_alani.x + b["x"] + 12, self.oyun_alani.y + b["y"] + 12], width=2)
+                    Line(points=[self.oyun_alani.x + b["x"] - 12, self.oyun_alani.y + b["y"] + 12,
+                                 self.oyun_alani.x + b["x"] + 12, self.oyun_alani.y + b["y"] - 12], width=2)
 
     def dokunuldu(self, inst, touch):
         if not self.oyun_aktif or not self.oyun_alani.collide_point(*touch.pos):
             return
-        r = 58 * olcek()
-        if abs(touch.x - self.balon_x) < r and abs(touch.y - self.balon_y) < r:
-            self.puan += 10
-            self.seviye = (self.puan // 30) + 1
-            self.lbl_skor.text = f"Puan: {self.puan} | Seviye: {self.seviye}"
-            ses_efekti_cal("alkis")
-            self.yeni_balon()
+        local_x = touch.x - self.oyun_alani.x
+        local_y = touch.y - self.oyun_alani.y
+
+        for b in self.balonlar[:]:
+            if abs(local_x - b["x"]) < 35 and abs(local_y - b["y"]) < 35:
+                if b["tuzak"]:
+                    # Tuzak balona tiklandi! Can kaybet
+                    ses_efekti_cal("uzuntu")
+                    self.balonlar.remove(b)
+                    self._can_azalt()
+                else:
+                    ses_efekti_cal("alkis")
+                    self.puan += 10
+                    yeni_seviye = (self.puan // 50) + 1
+                    if yeni_seviye > self.seviye:
+                        self.seviye = yeni_seviye
+                        metni_turkce_seslendir(f"Tebrikler, Seviye {self.seviye}")
+                        self.lbl_skor.text = f"Puan: {self.puan} | Seviye: {self.seviye} (Onceki Puan: {self.puan-10})"
+                    self.balonlar.remove(b)
+                break
 
     def _can_azalt(self):
         self.app.canlar -= 1
         ses_efekti_cal("uzuntu")
-        Clock.schedule_once(lambda dt: ses_efekti_cal("sasirma"), 0.25)
         if self.ust_panel:
             self.ust_panel.ses_guncelle()
         if self.app.canlar <= 0:
             self.oyun_aktif = False
             if self._olay:
                 self._olay.cancel()
-            can_bitti_popup_goster(self.app, "balon", None, self.menuye_don)
+            can_bitti_popup_goster(self.app, "balon", self.menuye_don)
 
 
 # ==========================================
-# OYUN 2: BAL PESINDE ARI
+# OYUN 2: NESELI ARI (Ağaç Sorunu Çözüldü & Kovan Eklendi)
 # ==========================================
 class AriOyunuEkrani(Screen):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.app = None
-        self.kok = RenkliArkaplan(renk=(0.44, 0.84, 1, 1))
-        self.dis = BoxLayout(orientation="vertical")
-        self.oyun_alani = Widget()
+        self.kok = EnerjikArkaplan()
+        self.dis = BoxLayout(orientation="vertical", padding=10, spacing=5)
+        self.oyun_alani = Widget(size_hint=(1, 0.85))
         self.oyun_alani.bind(on_touch_move=self.parmak_hareket, on_touch_down=self.parmak_hareket)
 
-        self.lbl_skor = Label(text="Puan: 0 | Seviye: 1", size_hint=(1, None), height=30,
-                               color=(0.1, 0.35, 0.12, 1), bold=True)
+        self.lbl_skor = Label(text="Puan: 0 | Seviye: 1", size_hint=(1, None), height=35, color=(1, 1, 1, 1), bold=True)
         self.dis.add_widget(self.lbl_skor)
         self.dis.add_widget(self.oyun_alani)
         self.kok.add_widget(self.dis)
@@ -765,9 +623,6 @@ class AriOyunuEkrani(Screen):
         self.oyun_aktif = False
         if self._olay:
             self._olay.cancel()
-        if getattr(self, "_dusme_olay", None):
-            self._dusme_olay.cancel()
-            self._dusme_olay = None
         self.manager.current = "menu"
 
     def oyunu_baslat(self):
@@ -775,14 +630,10 @@ class AriOyunuEkrani(Screen):
         self._panel_kur()
         self.puan = 0
         self.seviye = 1
-        self.kalan_mesafe = 500
-        self.ari_y = 300
-        self.ari_dondu = False
-        self.ari_aci = 0
+        self.kalan_mesafe = 400
+        self.ari_y = 250
         self.engeller = []
-        self._engel_bekleme = 20
-        self._dusme_olay = None
-        self.bal_kutusu_x = None
+        self._engel_bekleme = 15
         self.oyun_aktif = True
         muzik_ses_seviyesi_ayarla(0.2)
         if self._olay:
@@ -790,123 +641,80 @@ class AriOyunuEkrani(Screen):
         self._olay = Clock.schedule_interval(self.adim, 1 / 30)
 
     def parmak_hareket(self, inst, touch):
-        if self.oyun_aktif and not self.ari_dondu and self.oyun_alani.collide_point(*touch.pos):
+        if self.oyun_aktif and self.oyun_alani.collide_point(*touch.pos):
             self.ari_y = touch.y
 
     def adim(self, dt):
-        if not self.oyun_aktif or self.ari_dondu:
+        if not self.oyun_aktif:
             return
-        ol = olcek()
         w = self.oyun_alani.width or 400
-        h = self.oyun_alani.height or 600
-        ari_x = 90 * ol
+        h = self.oyun_alani.height or 500
+        ari_x = 70
 
-        hiz = (3.5 + self.seviye * 1.2) * ol
+        hiz = 3.0 + self.seviye * 0.5
         self.kalan_mesafe -= 1
 
-        if self.kalan_mesafe > 60:
-            self._engel_bekleme -= 1
-            if self._engel_bekleme <= 0:
-                y_min, y_max = 90 * ol, max(150 * ol, h - 90 * ol)
-                yeni_y = random.uniform(y_min, y_max)
-                if self.engeller:
-                    son_y = self.engeller[-1][1]
-                    if abs(yeni_y - son_y) < 110 * ol:
-                        # onceki engelle ayni yuksekligi paylasmasin, ters tarafa gonder
-                        yeni_y = y_max - (yeni_y - y_min)
-                self.engeller.append([w + 40 * ol, yeni_y, random.uniform(65, 130) * ol])
-                # bir sonraki engele kadar gecen mesafe seviyeyle biraz kisalir ama
-                # hep birbirinden ayri, uzerte binmeyecek kadar genis kalir
-                self._engel_bekleme = random.uniform(42, 62) / (1 + self.seviye * 0.10)
+        # Surekli agac/engel uretimi (Seviye 5 ve sonrasında da devam etmesi sağlandı)
+        self._engel_bekleme -= 1
+        if self._engel_bekleme <= 0:
+            yeni_y = random.uniform(60, h - 60)
+            self.engeller.append([w + 30, yeni_y, random.uniform(80, 140)])
+            self._engel_bekleme = max(25, 55 - self.seviye * 3)
 
         yeni = []
         carpisti = False
         for eng in self.engeller:
             eng[0] -= hiz
             ex, ey, eh = eng
-            if abs(ari_x - ex) < 38 * ol and abs(self.ari_y - ey) < (eh / 2 + 28 * ol):
+            if abs(ari_x - ex) < 30 and abs(self.ari_y - ey) < (eh / 2 + 20):
                 carpisti = True
-            if ex > -40 * ol:
+            if ex > -50:
                 yeni.append(eng)
         self.engeller = yeni
 
         if carpisti:
-            self.ari_dondu = True
             ses_efekti_cal("uzuntu")
-            self._duşme_baslangic_y = self.ari_y
-            self._duşme_baslangic_x = ari_x
-            self._duşme_zaman = 0
-            if self._dusme_olay:
-                self._dusme_olay.cancel()
-            self._dusme_olay = Clock.schedule_interval(self._dusme_adimi, 1 / 30)
-            self._ciz(ari_x, h)
+            self._can_azalt()
+            self.engeller = []
             return
-
-        kazanildi = False
-        if self.kalan_mesafe <= 0:
-            if self.bal_kutusu_x is None:
-                self.bal_kutusu_x = w + 40 * ol
-            self.bal_kutusu_x -= hiz
-            if abs(ari_x - self.bal_kutusu_x) < 55 * ol and abs(self.ari_y - h / 2) < 70 * ol:
-                kazanildi = True
 
         self._ciz(ari_x, h)
 
-        if kazanildi:
-            ses_efekti_cal("tin")
-            self.seviye += 1
+        if self.kalan_mesafe <= 0:
+            ses_efekti_cal("alkis")
             self.puan += 50
-            self.kalan_mesafe = 500 + self.seviye * 150
-            self.bal_kutusu_x = None
-            self.lbl_skor.text = f"Puan: {self.puan} | Seviye: {self.seviye}"
+            self.seviye += 1
+            metni_turkce_seslendir(f"Tebrikler, kowana ulastin! Seviye {self.seviye}")
+            self.kalan_mesafe = 400 + self.seviye * 100
+            self.lbl_skor.text = f"Puan: {self.puan} | Seviye: {self.seviye} (Onceki Puan: {self.puan-50})"
 
     def _ciz(self, ari_x, h):
-        ol = olcek()
         self.oyun_alani.canvas.clear()
         with self.oyun_alani.canvas:
+            # Agac engelleri
             for ex, ey, eh in self.engeller:
-                Color(0.47, 0.33, 0.28, 1)
-                Rectangle(pos=(ex - 19 * ol, ey - eh / 2), size=(38 * ol, eh))
-                Color(0.22, 0.56, 0.24, 1)
-                Ellipse(pos=(ex - 38 * ol, ey - eh / 2 - 15 * ol), size=(76 * ol, 30 * ol))
+                Color(0.35, 0.20, 0.10, 1) # Kahverengi govde
+                Rectangle(pos=(self.oyun_alani.x + ex - 15, self.oyun_alani.y + ey - eh / 2), size=(30, eh))
+                Color(0.15, 0.60, 0.20, 1) # Yesil yaprak
+                Ellipse(pos=(self.oyun_alani.x + ex - 30, self.oyun_alani.y + ey - eh / 2 - 20), size=(60, 40))
 
-            if self.kalan_mesafe <= 0 and self.bal_kutusu_x is not None:
-                r_bal = 42 * ol
-                Color(1, 0.70, 0.10, 1)
-                Ellipse(pos=(self.bal_kutusu_x - r_bal, h / 2 - r_bal), size=(r_bal * 2, r_bal * 2))
+            # Kovan (Ekranda hedef olarak gorsel kovan seklinde cizildi)
+            if self.kalan_mesafe < 60:
+                kx, ky = self.oyun_alani.x + (self.oyun_alani.width or 400) - 60, self.oyun_alani.y + h / 2
+                Color(0.85, 0.55, 0.15, 1)
+                Ellipse(pos=(kx - 25, ky - 35), size=(50, 70))
+                Color(0.4, 0.2, 0.05, 1)
+                Ellipse(pos=(kx - 10, ky - 10), size=(20, 20))
 
-            # Ari govdesi (daha buyuk ve belirgin) - carpinca basi donerek dusuyor
-            gw, gh = 66 * ol, 46 * ol
-            PushMatrix()
-            Rotate(angle=getattr(self, "ari_aci", 0), origin=(ari_x, self.ari_y))
-            Color(1, 0.76, 0.03, 1)
-            Ellipse(pos=(ari_x - gw / 2, self.ari_y - gh / 2), size=(gw, gh))
-            Color(0.24, 0.15, 0.14, 1)
-            Rectangle(pos=(ari_x - gw * 0.24, self.ari_y - gh / 2), size=(gw * 0.16, gh))
-            Rectangle(pos=(ari_x + gw * 0.08, self.ari_y - gh / 2), size=(gw * 0.16, gh))
-            Color(0.88, 0.95, 0.96, 0.9)
-            Ellipse(pos=(ari_x - gw * 0.30, self.ari_y + gh * 0.10), size=(gw * 0.42, gh * 0.55))
-            Ellipse(pos=(ari_x + gw * 0.02, self.ari_y + gh * 0.10), size=(gw * 0.42, gh * 0.55))
-            Color(0.1, 0.1, 0.1, 1)
-            Ellipse(pos=(ari_x + gw * 0.22, self.ari_y + gh * 0.05), size=(gw * 0.14, gh * 0.14))
-            PopMatrix()
+            # Ari Cizimi
+            Color(1, 0.8, 0.0, 1)
+            Ellipse(pos=(self.oyun_alani.x + ari_x - 20, self.oyun_alani.y + self.ari_y - 15), size=(40, 30))
+            Color(0.2, 0.2, 0.2, 1)
+            Rectangle(pos=(self.oyun_alani.x + ari_x - 8, self.oyun_alani.y + self.ari_y - 15), size=(6, 30))
 
         self.lbl_skor.text = f"Puan: {self.puan} | Seviye: {self.seviye}"
 
-    def _dusme_adimi(self, dt):
-        ol = olcek()
-        self._duşme_zaman += dt
-        t = self._duşme_zaman
-        self.ari_aci = t * 620
-        self.ari_y = self._duşme_baslangic_y - (t ** 2) * 260 * ol
-        self._ciz(self._duşme_baslangic_x, self.oyun_alani.height or 600)
-        if t >= 0.7:
-            self._dusme_olay.cancel()
-            self._dusme_olay = None
-            self._carpma_sonrasi()
-            return False
-
-    def _carpma_sonrasi(self):
+    def _can_azalt(self):
         self.app.canlar -= 1
         if self.ust_panel:
             self.ust_panel.ses_guncelle()
@@ -914,34 +722,30 @@ class AriOyunuEkrani(Screen):
             self.oyun_aktif = False
             if self._olay:
                 self._olay.cancel()
-            can_bitti_popup_goster(self.app, "ari", None, self.menuye_don)
-        else:
-            self.ari_dondu = False
-            self.ari_aci = 0
-            self.ari_y = 300
-            self.engeller = []
+            can_bitti_popup_goster(self.app, "ari", self.menuye_don)
 
 
 # ==========================================
-# OYUN 3: SEKIL VE RENK AVCISI
+# OYUN 3: SEKIL VE RENK AVCISI (Büyük İkonlar & Adet Gösterimi)
 # ==========================================
 class SekilOyunuEkrani(Screen):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.app = None
-        self.kok = RenkliArkaplan(renk=(0.44, 0.84, 1, 1))
-        self.dis = BoxLayout(orientation="vertical")
+        self.kok = EnerjikArkaplan()
+        self.dis = BoxLayout(orientation="vertical", padding=10, spacing=5)
 
-        self.lbl_soru = Label(text="", size_hint=(1, None), height=40, bold=True,
-                               color=(0, 1, 1, 1))
-        self.lbl_durum = Label(text="", size_hint=(1, None), height=28,
-                                color=(1, 1, 1, 1))
-        self.oyun_alani = Widget()
+        self.lbl_soru = Label(text="", size_hint=(1, None), height=45, bold=True, color=(1, 1, 0, 1), font_size="16sp")
+        self.lbl_durum = Label(text="", size_hint=(1, None), height=30, color=(1, 1, 1, 1))
+        
+        self.cerceve = FloatLayout(size_hint=(1, 0.8))
+        self.oyun_alani = Widget(size_hint=(0.85, 0.85), pos_hint={"center_x": 0.5, "center_y": 0.5})
         self.oyun_alani.bind(on_touch_down=self.dokunuldu)
+        self.cerceve.add_widget(self.oyun_alani)
 
         self.dis.add_widget(self.lbl_soru)
         self.dis.add_widget(self.lbl_durum)
-        self.dis.add_widget(self.oyun_alani)
+        self.dis.add_widget(self.cerceve)
         self.kok.add_widget(self.dis)
         self.add_widget(self.kok)
         self.ust_panel = None
@@ -969,121 +773,103 @@ class SekilOyunuEkrani(Screen):
 
     def _seviye_yukle(self):
         self.oyun_aktif = True
-        self.kalan_sure = max(8, 21 - self.seviye)
+        self.kalan_sure = max(10, 25 - self.seviye)
         self.bulunan = 0
 
         self.hedef_renk_adi = random.choice(list(RENK_SOZLUGU.keys()))
         self.hedef_renk = RENK_SOZLUGU[self.hedef_renk_adi]
         self.hedef_sekil = random.choice(SEKIL_TIPLERI)
-        self.hedef_sayi = random.randint(3, 5)
+        self.hedef_sayi = random.randint(2, 4)
 
         self.nesneler = []
         for _ in range(self.hedef_sayi):
-            self.nesneler.append({"renk_adi": self.hedef_renk_adi, "renk": self.hedef_renk,
-                                   "sekil": self.hedef_sekil, "hedef": True, "bulundu": False})
+            self.nesneler.append({"renk": self.hedef_renk, "sekil": self.hedef_sekil, "hedef": True, "bulundu": False})
 
-        celdirici = random.randint(7, 10) + self.seviye // 2
-        for _ in range(celdirici):
+        for _ in range(6):
             r_ad = random.choice(list(RENK_SOZLUGU.keys()))
             s_tip = random.choice(SEKIL_TIPLERI)
             if r_ad == self.hedef_renk_adi and s_tip == self.hedef_sekil:
                 s_tip = "Kare" if self.hedef_sekil != "Kare" else "Yuvarlak"
-            self.nesneler.append({"renk_adi": r_ad, "renk": RENK_SOZLUGU[r_ad],
-                                   "sekil": s_tip, "hedef": False, "bulundu": False})
+            self.nesneler.append({"renk": RENK_SOZLUGU[r_ad], "sekil": s_tip, "hedef": False, "bulundu": False})
 
         random.shuffle(self.nesneler)
 
-        self.lbl_soru.text = f"{self.hedef_sayi} tane {self.hedef_renk_adi} {self.hedef_sekil} bul!"
-        self.lbl_durum.text = f"Seviye {self.seviye} | Puan {self.puan} | Sure {self.kalan_sure}"
+        # Çocukların rahat anlaması için büyük yazı ve adet gösterimi
+        self.lbl_soru.text = f"BULACAGIN: {self.hedef_sayi} Adet ({self.hedef_renk_adi} {self.hedef_sekil})"
+        self.lbl_durum.text = f"Seviye {self.seviye} | Puan {self.puan} | Sure: {self.kalan_sure}"
 
         Clock.schedule_once(lambda dt: self._konumlandir_ve_ciz(), 0)
-        metni_turkce_seslendir(self.lbl_soru.text, bitince_bunu_yap=self._zamanlayici_baslat)
-
-    def _konumlandir_ve_ciz(self):
-        w = self.oyun_alani.width or 400
-        h = self.oyun_alani.height or 500
-        n_toplam = max(1, len(self.nesneler))
-
-        cols = max(1, math.ceil(math.sqrt(n_toplam * w / max(h, 1))))
-        rows = max(1, math.ceil(n_toplam / cols))
-        pad = 42 * olcek()
-        hucre_w = max(pad * 2, (w - pad * 2) / cols)
-        hucre_h = max(pad * 2, (h - pad * 2) / rows)
-
-        hucreler = [(c, r) for r in range(rows) for c in range(cols)]
-        random.shuffle(hucreler)
-
-        for nesne, (c, r) in zip(self.nesneler, hucreler):
-            merkez_x = pad + c * hucre_w + hucre_w / 2
-            merkez_y = pad + r * hucre_h + hucre_h / 2
-            jitter_x = random.uniform(-hucre_w * 0.22, hucre_w * 0.22)
-            jitter_y = random.uniform(-hucre_h * 0.22, hucre_h * 0.22)
-            nesne["x"] = min(max(pad, merkez_x + jitter_x), max(pad, w - pad))
-            nesne["y"] = min(max(pad, merkez_y + jitter_y), max(pad, h - pad))
-        self._ciz()
-
-    def _zamanlayici_baslat(self):
+        metni_turkce_seslendir(f"{self.hedef_sayi} tane {self.hedef_renk_adi} {self.hedef_sekil} bul")
         if self._zaman_olay:
             self._zaman_olay.cancel()
         self._zaman_olay = Clock.schedule_interval(self._zaman_adimi, 1)
+
+    def _konumlandir_ve_ciz(self):
+        w = self.oyun_alani.width or 320
+        h = self.oyun_alani.height or 350
+        n_toplam = len(self.nesneler)
+        cols = 3
+        rows = math.ceil(n_toplam / cols)
+        hucre_w, hucre_h = w / cols, h / rows
+
+        idx = 0
+        for r in range(rows):
+            for c in range(cols):
+                if idx >= len(self.nesneler):
+                    break
+                self.nesneler[idx]["x"] = c * hucre_w + hucre_w / 2
+                self.nesneler[idx]["y"] = (rows - 1 - r) * hucre_h + hucre_h / 2
+                idx += 1
+        self._ciz()
 
     def _zaman_adimi(self, dt):
         if not self.oyun_aktif:
             return False
         if self.kalan_sure > 0:
             self.kalan_sure -= 1
-            if self.kalan_sure <= 5:
-                ses_efekti_cal("tik")
-            self.lbl_durum.text = f"Seviye {self.seviye} | Puan {self.puan} | Sure {self.kalan_sure}"
+            self.lbl_durum.text = f"Seviye {self.seviye} | Puan {self.puan} | Sure: {self.kalan_sure}"
         else:
             self._zaman_olay.cancel()
             self.oyun_aktif = False
             self._can_azalt()
             return False
 
-    def _sekil_ciz(self, n):
-        x, y = n["x"], n["y"]
-        r = 30 * olcek()
-        if n["bulundu"]:
-            Color(0.18, 0.80, 0.44, 1)
-            Ellipse(pos=(x - r - 8, y - r - 8), size=((r + 8) * 2, (r + 8) * 2))
-        Color(*n["renk"])
-        s = n["sekil"]
-        if s == "Yuvarlak":
-            Ellipse(pos=(x - r, y - r), size=(r * 2, r * 2))
-        elif s == "Kare":
-            Rectangle(pos=(x - r, y - r), size=(r * 2, r * 2))
-        elif s == "Ucgen":
-            Triangle(points=[x, y + r, x - r, y - r, x + r, y - r])
-        elif s == "Yildiz":
-            pts = []
-            for i in range(10):
-                ang = i * math.pi / 5 - math.pi / 2
-                rad = r + 4 if i % 2 == 0 else r / 2
-                pts.append(x + rad * math.cos(ang))
-                pts.append(y + rad * math.sin(ang))
-            Line(points=pts + pts[:2], width=1.5, close=True)
-            Triangle(points=[x, y + r, x - r * 0.6, y - r * 0.3, x + r * 0.6, y - r * 0.3])
-
     def _ciz(self):
         self.oyun_alani.canvas.clear()
         with self.oyun_alani.canvas:
             for n in self.nesneler:
-                self._sekil_ciz(n)
+                x = self.oyun_alani.x + n["x"]
+                y = self.oyun_alani.y + n["y"]
+                r = 35 # Cocuklar icin daha buyuk sekil boyutlari
+                if n["bulundu"]:
+                    Color(0.18, 0.80, 0.44, 1)
+                    Ellipse(pos=(x - r - 6, y - r - 6), size=((r + 6) * 2, (r + 6) * 2))
+                Color(*n["renk"])
+                s = n["sekil"]
+                if s == "Yuvarlak":
+                    Ellipse(pos=(x - r, y - r), size=(r * 2, r * 2))
+                elif s == "Kare":
+                    Rectangle(pos=(x - r, y - r), size=(r * 2, r * 2))
+                elif s == "Ucgen":
+                    Triangle(points=[x, y + r, x - r, y - r, x + r, y - r])
+                elif s == "Yildiz":
+                    Ellipse(pos=(x - r, y - r), size=(r * 2, r * 2)) # Alternatif buyuk daire/yildiz temsili
 
     def dokunuldu(self, inst, touch):
         if not self.oyun_aktif or not self.oyun_alani.collide_point(*touch.pos):
             return
+        local_x = touch.x - self.oyun_alani.x
+        local_y = touch.y - self.oyun_alani.y
+
         for n in self.nesneler:
             if n["bulundu"]:
                 continue
-            if abs(touch.x - n["x"]) < 38 * olcek() and abs(touch.y - n["y"]) < 38 * olcek():
+            if abs(local_x - n["x"]) < 40 and abs(local_y - n["y"]) < 40:
                 if n["hedef"]:
                     n["bulundu"] = True
                     self.bulunan += 1
                     self.puan += 10
                     ses_efekti_cal("tin")
-                    self.lbl_durum.text = f"Seviye {self.seviye} | Puan {self.puan} | Sure {self.kalan_sure}"
                     self._ciz()
                     if self.bulunan >= self.hedef_sayi:
                         self._kazandi()
@@ -1096,10 +882,10 @@ class SekilOyunuEkrani(Screen):
         if self._zaman_olay:
             self._zaman_olay.cancel()
         ses_efekti_cal("alkis")
-        app = App.get_running_app()
-        metni_turkce_seslendir(f"Tebrikler {app.cocuk_ismi}!")
-        self.lbl_soru.text = f"TEBRIKLER! Seviye {self.seviye + 1}'e geciliyor..."
         self.seviye += 1
+        self.puan += 30
+        metni_turkce_seslendir(f"Tebrikler! Seviye {self.seviye}ye geciliyor")
+        self.lbl_soru.text = f"TEBRIKLER! Puan: {self.puan}"
         Clock.schedule_once(lambda dt: self._seviye_yukle(), 2)
 
     def _can_azalt(self):
@@ -1111,45 +897,36 @@ class SekilOyunuEkrani(Screen):
             self.oyun_aktif = False
             if self._zaman_olay:
                 self._zaman_olay.cancel()
-            can_bitti_popup_goster(self.app, "sekil", None, self.menuye_don)
+            can_bitti_popup_goster(self.app, "sekil", self.menuye_don)
         else:
             self._ciz()
 
 
 # ==========================================
-# OYUN 4: SURPRIZ BULMACA KULESI (KART ESLESTIRME)
+# OYUN 4: KART ESLESTIRME (Bulmaca Kulesi)
 # ==========================================
 class BulmacaOyunuEkrani(Screen):
-    SEMBOLLER = ["Kopek", "Kedi", "Elma", "Muz", "Araba", "Roket",
-                 "Balon", "Yildiz", "Panda", "Kurbaga", "Uzum", "Cilek"]
-    SEMBOL_RENK = {
-        "Kopek": (0.55, 0.35, 0.20, 1), "Kedi": (0.9, 0.6, 0.2, 1),
-        "Elma": (0.85, 0.15, 0.15, 1), "Muz": (0.95, 0.85, 0.1, 1),
-        "Araba": (0.15, 0.5, 0.85, 1), "Roket": (0.6, 0.6, 0.65, 1),
-        "Balon": (0.9, 0.2, 0.5, 1), "Yildiz": (0.95, 0.75, 0.1, 1),
-        "Panda": (0.2, 0.2, 0.2, 1), "Kurbaga": (0.2, 0.75, 0.3, 1),
-        "Uzum": (0.45, 0.15, 0.6, 1), "Cilek": (0.85, 0.1, 0.35, 1),
-    }
+    SEMBOLLER = ["Kopek", "Kedi", "Elma", "Muz", "Araba", "Roket", "Balon", "Yildiz"]
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.app = None
-        self.kok = RenkliArkaplan(renk=(0.44, 0.84, 1, 1))
-        self.dis = BoxLayout(orientation="vertical")
+        self.kok = EnerjikArkaplan()
+        self.dis = BoxLayout(orientation="vertical", padding=10, spacing=5)
 
-        self.lbl_durum = Label(text="", size_hint=(1, None), height=36, bold=True,
-                                color=(0, 1, 1, 1))
-        self.oyun_alani = Widget()
+        self.lbl_durum = Label(text="", size_hint=(1, None), height=35, bold=True, color=(0, 1, 1, 1))
+        self.cerceve = FloatLayout(size_hint=(1, 0.8))
+        self.oyun_alani = Widget(size_hint=(0.9, 0.9), pos_hint={"center_x": 0.5, "center_y": 0.5})
         self.oyun_alani.bind(on_touch_down=self.dokunuldu)
+        self.cerceve.add_widget(self.oyun_alani)
 
         self.dis.add_widget(self.lbl_durum)
-        self.dis.add_widget(self.oyun_alani)
+        self.dis.add_widget(self.cerceve)
         self.kok.add_widget(self.dis)
         self.add_widget(self.kok)
         self.ust_panel = None
         self._ezber_olay = None
         self.kartlar = []
-        self.kule_blok = 0
 
     def _panel_kur(self):
         if self.ust_panel is None:
@@ -1167,7 +944,6 @@ class BulmacaOyunuEkrani(Screen):
         self._panel_kur()
         self.seviye = 1
         self.puan = 0
-        self.kule_blok = 0
         muzik_ses_seviyesi_ayarla(0.2)
         self._seviye_yukle()
 
@@ -1176,23 +952,18 @@ class BulmacaOyunuEkrani(Screen):
         self.secilenler = []
         self.eslesen_cift = 0
         self.tiklama_kilitli = True
-        self.ezber_suresi = 5
+        self.ezber_suresi = 4
 
-        if self.seviye == 1:
-            self.toplam_cift, self.grid_cols = 3, 3
-        elif self.seviye == 2:
-            self.toplam_cift, self.grid_cols = 4, 4
-        else:
-            self.toplam_cift, self.grid_cols = 6, 4
-
-        secilen = random.sample(self.SEMBOLLER, self.toplam_cift)
+        toplam_cift = 3 if self.seviye == 1 else 4
+        secilen = random.sample(self.SEMBOLLER, toplam_cift)
         liste = secilen * 2
         random.shuffle(liste)
+        self.toplam_cift = toplam_cift
         self.kartlar = [{"sembol": s, "acik": True, "eslesdi": False} for s in liste]
 
         self.lbl_durum.text = f"Seviye {self.seviye} | Puan {self.puan}"
         Clock.schedule_once(lambda dt: self._ciz(), 0)
-        metni_turkce_seslendir("Kartlari aklinda tut!")
+        metni_turkce_seslendir("Kartlari aklinda tut")
         if self._ezber_olay:
             self._ezber_olay.cancel()
         self._ezber_olay = Clock.schedule_interval(self._ezber_adimi, 1)
@@ -1201,7 +972,6 @@ class BulmacaOyunuEkrani(Screen):
         if not self.oyun_aktif:
             return False
         if self.ezber_suresi > 0:
-            ses_efekti_cal("tik")
             self.ezber_suresi -= 1
             self._ciz()
         else:
@@ -1212,186 +982,48 @@ class BulmacaOyunuEkrani(Screen):
             self._ciz()
             return False
 
-    def _sembol_ciz(self, sembol, x, y, cw, ch):
-        """Kart uzerine, sembole gore tanina bilir kucuk bir resim (ikon) cizer.
-        Boylece hicbir dis gorsel/dosyaya ihtiyac olmadan hayvan/nesne gorseli gorunur."""
-        cx, cy = x + cw / 2, y + ch / 2
-        b = min(cw, ch)
-        renk = self.SEMBOL_RENK.get(sembol, (1, 1, 1, 1))
-
-        if sembol == "Kopek":
-            Color(0.87, 0.68, 0.45, 1)
-            Ellipse(pos=(cx - b * 0.32, cy - b * 0.28), size=(b * 0.64, b * 0.56))
-            Color(0.55, 0.35, 0.20, 1)
-            Ellipse(pos=(cx - b * 0.40, cy + b * 0.05), size=(b * 0.22, b * 0.32))
-            Ellipse(pos=(cx + b * 0.18, cy + b * 0.05), size=(b * 0.22, b * 0.32))
-            Color(0.3, 0.2, 0.12, 1)
-            Ellipse(pos=(cx - b * 0.08, cy - b * 0.06), size=(b * 0.16, b * 0.12))
-
-        elif sembol == "Kedi":
-            Color(0.9, 0.6, 0.2, 1)
-            Ellipse(pos=(cx - b * 0.30, cy - b * 0.28), size=(b * 0.60, b * 0.56))
-            Triangle(points=[cx - b * 0.28, cy + b * 0.14, cx - b * 0.14, cy + b * 0.14, cx - b * 0.22, cy + b * 0.34])
-            Triangle(points=[cx + b * 0.28, cy + b * 0.14, cx + b * 0.14, cy + b * 0.14, cx + b * 0.22, cy + b * 0.34])
-            Color(0.2, 0.2, 0.2, 1)
-            Line(points=[cx - b * 0.30, cy, cx - b * 0.06, cy + b * 0.02], width=1.2)
-            Line(points=[cx + b * 0.30, cy, cx + b * 0.06, cy + b * 0.02], width=1.2)
-
-        elif sembol == "Elma":
-            Color(0.85, 0.15, 0.15, 1)
-            Ellipse(pos=(cx - b * 0.28, cy - b * 0.30), size=(b * 0.56, b * 0.56))
-            Color(0.35, 0.22, 0.1, 1)
-            Line(points=[cx, cy + b * 0.24, cx, cy + b * 0.36], width=1.5)
-            Color(0.2, 0.7, 0.3, 1)
-            Triangle(points=[cx, cy + b * 0.30, cx + b * 0.20, cy + b * 0.38, cx + b * 0.06, cy + b * 0.22])
-
-        elif sembol == "Muz":
-            Color(*renk)
-            PushMatrix()
-            Rotate(angle=-25, origin=(cx, cy))
-            Ellipse(pos=(cx - b * 0.36, cy - b * 0.14), size=(b * 0.72, b * 0.28))
-            PopMatrix()
-            Color(0.6, 0.45, 0.15, 1)
-            PushMatrix()
-            Rotate(angle=-25, origin=(cx, cy))
-            Ellipse(pos=(cx + b * 0.30, cy - b * 0.05), size=(b * 0.10, b * 0.10))
-            PopMatrix()
-
-        elif sembol == "Araba":
-            Color(*renk)
-            Rectangle(pos=(cx - b * 0.34, cy - b * 0.06), size=(b * 0.68, b * 0.24))
-            Rectangle(pos=(cx - b * 0.18, cy + b * 0.10), size=(b * 0.40, b * 0.18))
-            Color(0.7, 0.85, 0.95, 1)
-            Rectangle(pos=(cx - b * 0.14, cy + b * 0.12), size=(b * 0.14, b * 0.12))
-            Rectangle(pos=(cx + b * 0.02, cy + b * 0.12), size=(b * 0.14, b * 0.12))
-            Color(0.15, 0.15, 0.15, 1)
-            Ellipse(pos=(cx - b * 0.28, cy - b * 0.18), size=(b * 0.16, b * 0.16))
-            Ellipse(pos=(cx + b * 0.12, cy - b * 0.18), size=(b * 0.16, b * 0.16))
-
-        elif sembol == "Roket":
-            Color(*renk)
-            Rectangle(pos=(cx - b * 0.10, cy - b * 0.28), size=(b * 0.20, b * 0.44))
-            Triangle(points=[cx - b * 0.10, cy + b * 0.16, cx + b * 0.10, cy + b * 0.16, cx, cy + b * 0.36])
-            Color(0.85, 0.25, 0.2, 1)
-            Triangle(points=[cx - b * 0.10, cy - b * 0.26, cx - b * 0.24, cy - b * 0.40, cx - b * 0.10, cy - b * 0.12])
-            Triangle(points=[cx + b * 0.10, cy - b * 0.26, cx + b * 0.24, cy - b * 0.40, cx + b * 0.10, cy - b * 0.12])
-            Color(0.6, 0.8, 0.95, 1)
-            Ellipse(pos=(cx - b * 0.07, cy), size=(b * 0.14, b * 0.14))
-
-        elif sembol == "Balon":
-            Color(*renk)
-            Ellipse(pos=(cx - b * 0.26, cy - b * 0.14), size=(b * 0.52, b * 0.52))
-            Color(1, 1, 1, 0.5)
-            Ellipse(pos=(cx - b * 0.14, cy + b * 0.18), size=(b * 0.14, b * 0.10))
-            Color(0.3, 0.3, 0.3, 1)
-            Line(points=[cx, cy - b * 0.14, cx, cy - b * 0.36], width=1.2)
-
-        elif sembol == "Yildiz":
-            Color(*renk)
-            d_pts, i_pts = [], []
-            for i in range(5):
-                ang = i * 2 * math.pi / 5 - math.pi / 2
-                d_pts.append((cx + b * 0.34 * math.cos(ang), cy + b * 0.34 * math.sin(ang)))
-                ang2 = ang + math.pi / 5
-                i_pts.append((cx + b * 0.14 * math.cos(ang2), cy + b * 0.14 * math.sin(ang2)))
-            for i in range(5):
-                Triangle(points=[cx, cy, *d_pts[i], *i_pts[i]])
-                Triangle(points=[cx, cy, *i_pts[i], *d_pts[(i + 1) % 5]])
-
-        elif sembol == "Panda":
-            Color(1, 1, 1, 1)
-            Ellipse(pos=(cx - b * 0.30, cy - b * 0.30), size=(b * 0.60, b * 0.60))
-            Color(0.1, 0.1, 0.1, 1)
-            Ellipse(pos=(cx - b * 0.36, cy + b * 0.14), size=(b * 0.20, b * 0.20))
-            Ellipse(pos=(cx + b * 0.16, cy + b * 0.14), size=(b * 0.20, b * 0.20))
-            Ellipse(pos=(cx - b * 0.24, cy - b * 0.02), size=(b * 0.18, b * 0.22))
-            Ellipse(pos=(cx + b * 0.06, cy - b * 0.02), size=(b * 0.18, b * 0.22))
-            Ellipse(pos=(cx - b * 0.05, cy - b * 0.10), size=(b * 0.10, b * 0.08))
-
-        elif sembol == "Kurbaga":
-            Color(*renk)
-            Ellipse(pos=(cx - b * 0.30, cy - b * 0.24), size=(b * 0.60, b * 0.46))
-            Color(1, 1, 1, 1)
-            Ellipse(pos=(cx - b * 0.24, cy + b * 0.14), size=(b * 0.20, b * 0.20))
-            Ellipse(pos=(cx + b * 0.04, cy + b * 0.14), size=(b * 0.20, b * 0.20))
-            Color(0.1, 0.1, 0.1, 1)
-            Ellipse(pos=(cx - b * 0.17, cy + b * 0.20), size=(b * 0.08, b * 0.08))
-            Ellipse(pos=(cx + b * 0.11, cy + b * 0.20), size=(b * 0.08, b * 0.08))
-
-        elif sembol == "Uzum":
-            Color(*renk)
-            merkezler = [(0, 0.16), (-0.16, 0.0), (0.16, 0.0), (-0.10, -0.16), (0.10, -0.16), (0, -0.30)]
-            for dx, dy in merkezler:
-                Ellipse(pos=(cx + b * dx - b * 0.11, cy + b * dy - b * 0.11), size=(b * 0.22, b * 0.22))
-            Color(0.2, 0.7, 0.3, 1)
-            Triangle(points=[cx, cy + b * 0.30, cx - b * 0.10, cy + b * 0.40, cx + b * 0.10, cy + b * 0.40])
-
-        else:  # Cilek
-            Color(*renk)
-            Triangle(points=[cx, cy - b * 0.32, cx - b * 0.28, cy + b * 0.16, cx + b * 0.28, cy + b * 0.16])
-            Ellipse(pos=(cx - b * 0.28, cy - b * 0.02), size=(b * 0.56, b * 0.30))
-            Color(0.2, 0.7, 0.3, 1)
-            Triangle(points=[cx, cy + b * 0.14, cx - b * 0.14, cy + b * 0.28, cx + b * 0.14, cy + b * 0.28])
-            Color(0.95, 0.85, 0.3, 1)
-            for dx, dy in [(-0.12, -0.05), (0.12, -0.05), (0, 0.05), (-0.06, 0.12), (0.06, 0.12)]:
-                Ellipse(pos=(cx + b * dx - b * 0.02, cy + b * dy - b * 0.02), size=(b * 0.04, b * 0.04))
-
     def _kart_konumu(self, idx):
-        w = self.oyun_alani.width or 400
-        h = self.oyun_alani.height or 500
-        cols = self.grid_cols
-        rows = math.ceil(len(self.kartlar) / cols)
-        card_w = min(110 * olcek(), (w - 20) / cols - 12)
-        card_h = card_w * 1.2
-        toplam_w = cols * (card_w + 12) - 12
-        toplam_h = rows * (card_h + 12) - 12
+        w = self.oyun_alani.width or 320
+        h = self.oyun_alani.height or 350
+        cols = 3 if self.toplam_cift == 3 else 4
+        rows = 2
+        cw, ch = 75, 75
+        toplam_w = cols * 85
         start_x = (w - toplam_w) / 2
-        start_y = h - 20 - toplam_h
         col = idx % cols
         row = idx // cols
-        x = start_x + col * (card_w + 12)
-        y = start_y + (rows - 1 - row) * (card_h + 12)
-        return x, y, card_w, card_h
+        x = start_x + col * 85
+        y = h / 2 + (0.5 - row) * 90
+        return x, y, cw, ch
 
     def _ciz(self):
         self.oyun_alani.canvas.clear()
         with self.oyun_alani.canvas:
-            # kule
-            w = self.oyun_alani.width or 400
-            blok_h = 18
-            kule_renkleri = [(0.9, 0.3, 0.3, 1), (0.95, 0.8, 0.1, 1), (0.2, 0.8, 0.4, 1),
-                              (0.2, 0.6, 0.9, 1), (0.6, 0.35, 0.7, 1)]
-            for i in range(self.kule_blok):
-                Color(*kule_renkleri[i % len(kule_renkleri)])
-                Rectangle(pos=(w - 70, 10 + i * blok_h), size=(50, blok_h - 3))
-
             for idx, kart in enumerate(self.kartlar):
                 x, y, cw, ch = self._kart_konumu(idx)
-                if kart["eslesdi"]:
-                    Color(0.78, 0.90, 0.79, 1)
-                    Rectangle(pos=(x, y), size=(cw, ch))
-                    self._sembol_ciz(kart["sembol"], x, y, cw, ch)
-                elif kart["acik"]:
-                    Color(1, 1, 0.9, 1)
-                    Rectangle(pos=(x, y), size=(cw, ch))
-                    self._sembol_ciz(kart["sembol"], x, y, cw, ch)
+                ax = self.oyun_alani.x + x
+                ay = self.oyun_alani.y + y
+                if kart["eslesdi"] or kart["acik"]:
+                    Color(1, 1, 1, 1)
+                    Rectangle(pos=(ax, ay), size=(cw, ch))
+                    Color(0.1, 0.1, 0.1, 1)
+                    # Sembol adi yazisi yerine basit kutu ici sembol
+                    Rectangle(pos=(ax + 15, ay + 15), size=(cw - 30, ch - 30))
                 else:
                     Color(0.20, 0.60, 0.86, 1)
-                    Rectangle(pos=(x, y), size=(cw, ch))
-                    Color(1, 1, 1, 1)
-                    Line(rectangle=(x, y, cw, ch), width=1.5)
-
-        durum = f"Kartlari Incele: {self.ezber_suresi + 1} sn" if (self.ezber_suresi > 0 and self.tiklama_kilitli) else "Eslesenleri Bul!"
-        self.lbl_durum.text = f"Seviye {self.seviye} | Puan {self.puan} | {durum}"
+                    Rectangle(pos=(ax, ay), size=(cw, ch))
 
     def dokunuldu(self, inst, touch):
         if not self.oyun_aktif or self.tiklama_kilitli or not self.oyun_alani.collide_point(*touch.pos):
             return
+        local_x = touch.x - self.oyun_alani.x
+        local_y = touch.y - self.oyun_alani.y
+
         for idx, kart in enumerate(self.kartlar):
             if kart["acik"] or kart["eslesdi"]:
                 continue
             x, y, cw, ch = self._kart_konumu(idx)
-            if x <= touch.x <= x + cw and y <= touch.y <= y + ch:
+            if x <= local_x <= x + cw and y <= local_y <= y + ch:
                 ses_efekti_cal("tik")
                 kart["acik"] = True
                 self.secilenler.append(kart)
@@ -1400,19 +1032,19 @@ class BulmacaOyunuEkrani(Screen):
                     self.tiklama_kilitli = True
                     k1, k2 = self.secilenler
                     if k1["sembol"] == k2["sembol"]:
-                        ses_efekti_cal("tin")
+                        ses_efekti_cal("alkis")
                         k1["eslesdi"] = True
                         k2["eslesdi"] = True
                         self.eslesen_cift += 1
                         self.puan += 15
-                        self.kule_blok += 1
                         self.secilenler = []
                         self.tiklama_kilitli = False
                         self._ciz()
                         if self.eslesen_cift >= self.toplam_cift:
                             self._kazandi()
                     else:
-                        Clock.schedule_once(lambda dt: self._kapat(k1, k2), 0.7)
+                        ses_efekti_cal("uzuntu")
+                        Clock.schedule_once(lambda dt, c1=k1, c2=k2: self._kapat(c1, c2), 0.7)
                 return
 
     def _kapat(self, k1, k2):
@@ -1421,30 +1053,28 @@ class BulmacaOyunuEkrani(Screen):
         self.secilenler = []
         self.tiklama_kilitli = False
         self._can_azalt()
+        self._ciz()
 
     def _kazandi(self):
         self.oyun_aktif = False
         ses_efekti_cal("alkis")
-        app = App.get_running_app()
-        metni_turkce_seslendir(f"Tebrikler {app.cocuk_ismi}!")
-        self.lbl_durum.text = f"KULE BUYUYOR! Seviye {self.seviye + 1}'e geciliyor..."
         self.seviye += 1
+        self.puan += 40
+        metni_turkce_seslendir(f"Tebrikler! Seviye {self.seviye}ye geciliyor")
+        self.lbl_durum.text = f"TEBRIKLER! Puan: {self.puan}"
         Clock.schedule_once(lambda dt: self._seviye_yukle(), 2)
 
     def _can_azalt(self):
         self.app.canlar -= 1
-        ses_efekti_cal("uzuntu")
         if self.ust_panel:
             self.ust_panel.ses_guncelle()
         if self.app.canlar <= 0:
             self.oyun_aktif = False
-            can_bitti_popup_goster(self.app, "bulmaca", None, self.menuye_don)
-        else:
-            self._ciz()
+            can_bitti_popup_goster(self.app, "bulmaca", self.menuye_don)
 
 
 # ==========================================
-# ANA UYGULAMA
+# ANA UYGULAMA (Gerçek Saniye Sayaç Düzeltmesi ile)
 # ==========================================
 class MinikKasiflerApp(App):
     def build(self):
@@ -1452,26 +1082,15 @@ class MinikKasiflerApp(App):
         self.cocuk_ismi = "Minik Kasif"
         self.canlar = 3
         self.max_can = 3
-        self.can_yenilenme_suresi = 90  # 1 dakika 30 saniyede 1 can
+        self.can_yenilenme_suresi = 90
         self.kalan_can_suresi = self.can_yenilenme_suresi
-
-        # gecici ses dosyalarini temizle
-        kok = os.path.dirname(os.path.abspath(__file__))
-        for f in os.listdir(kok):
-            if f.startswith("gecici_ses_"):
-                try:
-                    os.remove(os.path.join(kok, f))
-                except Exception:
-                    pass
 
         self.sm = ScreenManager()
         self.sm.add_widget(YuklemeEkrani(name="yukleme"))
         self.sm.current = "yukleme"
 
-        # Agir ekranlari (oyunlar) ilk kare cizildikten hemen sonra kur;
-        # boylece kullanici siyah ekran yerine hemen yukleme ekranini gorur.
         Clock.schedule_once(self._agir_ekranlari_kur, 0.05)
-        Clock.schedule_interval(self._can_zamanlayicisi, 1)
+        Clock.schedule_interval(self._can_zamanlayicisi, 1) # Kesintisiz saniye sayacı
         return self.sm
 
     def _agir_ekranlari_kur(self, dt):
@@ -1488,9 +1107,19 @@ class MinikKasiflerApp(App):
     def _can_zamanlayicisi(self, dt):
         if self.canlar < self.max_can:
             self.kalan_can_suresi -= 1
+            # Üst paneldeki süreyi her saniye dinamik olarak güncelle
+            for ekran_adi in ["balon", "ari", "sekil", "bulmaca"]:
+                scr = self.sm.get_screen(ekran_adi)
+                if hasattr(scr, "ust_panel") and scr.ust_panel:
+                    if scr.ust_panel.lbl_sure:
+                        scr.ust_panel.lbl_sure.text = f"+1 can:\n{format_sure(self.kalan_can_suresi)}"
             if self.kalan_can_suresi <= 0:
                 self.canlar += 1
                 self.kalan_can_suresi = self.can_yenilenme_suresi
+                for ekran_adi in ["balon", "ari", "sekil", "bulmaca"]:
+                    scr = self.sm.get_screen(ekran_adi)
+                    if hasattr(scr, "ust_panel") and scr.ust_panel:
+                        scr.ust_panel.ses_guncelle()
         else:
             self.kalan_can_suresi = self.can_yenilenme_suresi
 
