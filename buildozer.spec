@@ -22,6 +22,7 @@ android.api = 33
 android.minapi = 24
 
 android.accept_sdk_license = True
+android.release_artifact = apk
 
 [buildozer]
 log_level = 2
