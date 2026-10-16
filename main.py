@@ -16,6 +16,7 @@ from kivy.uix.floatlayout import FloatLayout
 from kivy.uix.label import Label
 from kivy.uix.button import Button
 from kivy.uix.textinput import TextInput
+from kivy.uix.image import Image
 from kivy.uix.popup import Popup
 from kivy.uix.widget import Widget
 from kivy.graphics import Color, Ellipse, Rectangle, Triangle, Line, PushMatrix, PopMatrix, Rotate
@@ -420,19 +421,34 @@ class YuklemeEkrani(Screen):
 # ==========================================
 # EKRAN 1: GIRIS EKRANI
 # ==========================================
+class TasarimArkaplani(FloatLayout):
+    """Gorsel uzerindeki bolgeleri gercek dokunmatik kontrollere baglar."""
+    def __init__(self, dosya, **kwargs):
+        super().__init__(**kwargs)
+        self.resim = Image(source=os.path.join(ASSETS_KLASORU, dosya),
+                           allow_stretch=True, keep_ratio=False,
+                           size_hint=(1, 1), pos_hint={"x": 0, "y": 0})
+        self.add_widget(self.resim)
+
+
 class GirisEkrani(Screen):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        kok = EnerjikArkaplan()
-        icerik = BoxLayout(orientation="vertical", padding=35, spacing=15, size_hint=(0.8, 0.5),
-                           pos_hint={"center_x": 0.5, "center_y": 0.5})
-        icerik.add_widget(Label(text="MINIK KASIFLER", font_size="24sp", bold=True, color=(1, 0.84, 0.2, 1)))
-        self.isim_kutusu = TextInput(hint_text="Adin Nedir?", multiline=False, font_size="16sp", size_hint=(1, 0.25), halign="center")
-        icerik.add_widget(self.isim_kutusu)
-        btn_basla = Button(text="OYUNA BASLA", font_size="16sp", bold=True, background_color=(1, 0.30, 0.10, 1), size_hint=(1, 0.3))
-        btn_basla.bind(on_release=self.oyuna_basla)
-        icerik.add_widget(btn_basla)
-        kok.add_widget(icerik)
+        kok = TasarimArkaplani("giris_tasarim.png")
+        # Gorseldeki isim alanini gercek, duzenlenebilir kutuyla ortuyoruz.
+        self.isim_kutusu = TextInput(
+            hint_text="Adini yaz", multiline=False, font_size="20sp",
+            halign="center", foreground_color=(0.24, 0.16, 0.10, 1),
+            background_color=(1, 0.97, 0.88, 1),
+            size_hint=(0.64, 0.062), pos_hint={"center_x": 0.5, "y": 0.135})
+        kok.add_widget(self.isim_kutusu)
+        # Gorseldeki yesil Basla dugmesi zaten resimde; gorunmez
+        # dokunma alani dugmenin tam uzerinde calisir.
+        basla = Button(text="", background_color=(1, 1, 1, 0),
+                       background_normal="", background_down="",
+                       size_hint=(0.74, 0.11), pos_hint={"center_x": 0.5, "y": 0.022})
+        basla.bind(on_release=self.oyuna_basla)
+        kok.add_widget(basla)
         self.add_widget(kok)
 
     def oyuna_basla(self, *a):
@@ -444,40 +460,30 @@ class GirisEkrani(Screen):
         self.manager.current = "menu"
 
 
-# ==========================================
-# EKRAN 2: MENU
-# ==========================================
 class MenuEkrani(Screen):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.kok = EnerjikArkaplan()
-        self.dis = BoxLayout(orientation="vertical", padding=20, spacing=10)
-        self.baslik = Label(text="Oyununu Sec!", font_size="18sp", bold=True, color=(0.55, 0.90, 0.60, 1), size_hint=(1, 0.1))
-        self.dis.add_widget(self.baslik)
-
-        oyunlar = [
-            ("Balon Patlatma", (1, 0.30, 0.10, 1), "balon", _ikon_balon),
-            ("Neseli Ari", (1, 0.70, 0.10, 1), "ari", _ikon_ari),
-            ("Sekil Avcisi", (0.18, 0.55, 0.34, 1), "sekil", _ikon_sekil),
-            ("Bulmaca Kulesi", (0.83, 0.33, 0.0, 1), "bulmaca", _ikon_kart),
+        self.kok = TasarimArkaplani("menu_tasarim.png")
+        # 2x2 buyuk oyun kartlari, tasarimdaki yerlerine yerlestirildi.
+        kartlar = [
+            ("balon", 0.055, 0.55), ("ari", 0.515, 0.55),
+            ("sekil", 0.055, 0.305), ("bulmaca", 0.515, 0.305),
         ]
-        for metin, renk, kod, ikon_fn in oyunlar:
-            satir = BoxLayout(orientation="horizontal", size_hint=(1, 0.14), spacing=8)
-            satir.add_widget(IkonKutusu(ikon_fn, size_hint=(0.15, 1)))
-            btn = Button(text=metin, font_size="15sp", bold=True, background_color=renk, size_hint=(0.85, 1))
+        for kod, x, y in kartlar:
+            btn = Button(text="", background_normal="", background_down="",
+                         background_color=(1, 1, 1, 0),
+                         size_hint=(0.43, 0.24), pos_hint={"x": x, "y": y})
             btn.bind(on_release=lambda inst, k=kod: self.oyun_sec(k))
-            satir.add_widget(btn)
-            self.dis.add_widget(satir)
-
-        self.kok.add_widget(self.dis)
+            self.kok.add_widget(btn)
+        self.baslik = Label(text="", font_size="18sp", bold=True,
+                            color=(0.12, 0.12, 0.12, 1),
+                            size_hint=(0.48, 0.065), pos_hint={"x": 0.30, "y": 0.865})
+        self.kok.add_widget(self.baslik)
         self.add_widget(self.kok)
 
-    def guncelle(self):
-        app = App.get_running_app()
-        self.baslik.text = f"Sevgili {app.cocuk_ismi}, Oyununu Sec!"
-
     def on_enter(self):
-        self.guncelle()
+        app = App.get_running_app()
+        self.baslik.text = app.cocuk_ismi[:15]
 
     def oyun_sec(self, kod):
         app = App.get_running_app()
