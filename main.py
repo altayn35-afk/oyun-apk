@@ -41,6 +41,17 @@ ADMOB_REWARDED_ID = "ca-app-pub-1540771956171830/9097896782"
 
 _REKLAM_YONETICISI = None
 _ODUL_CALLBACK = None
+_REKLAM_HATA = "Reklam sistemi henuz baslatilmadi."
+
+
+def _reklam_uyarisi(mesaj):
+    """Android ekraninda reklam durumunu kullaniciya bildir."""
+    def goster(dt):
+        icerik = Label(text=str(mesaj)[:450], halign="center", valign="middle")
+        icerik.bind(size=lambda nesne, boyut: setattr(nesne, "text_size", boyut))
+        Popup(title="Reklam Bilgisi", content=icerik,
+              size_hint=(0.9, 0.4)).open()
+    Clock.schedule_once(goster, 0)
 
 
 class _OdulDinleyici(RewardedListenerInterface if KIVMOB_MEVCUT else object):
@@ -52,41 +63,52 @@ class _OdulDinleyici(RewardedListenerInterface if KIVMOB_MEVCUT else object):
             Clock.schedule_once(lambda dt: callback(), 0)
 
     def on_rewarded_video_ad_closed(self):
-        Clock.schedule_once(lambda dt: reklam_yeniden_yukle())
+        global _ODUL_CALLBACK
+        _ODUL_CALLBACK = None
+        Clock.schedule_once(lambda dt: reklam_yeniden_yukle(), 0)
 
 
 def reklam_sistemini_baslat():
-    global _REKLAM_YONETICISI
+    global _REKLAM_YONETICISI, _REKLAM_HATA
     if not KIVMOB_MEVCUT:
+        _REKLAM_HATA = "kivmob kutuphanesi yuklenemedi. Android reklam entegrasyonunu kontrol etmeliyiz."
+        print(_REKLAM_HATA)
         return
     try:
         _REKLAM_YONETICISI = KivMob(ADMOB_APP_ID)
         _REKLAM_YONETICISI.set_rewarded_ad_listener(_OdulDinleyici())
         _REKLAM_YONETICISI.load_rewarded_ad(ADMOB_REWARDED_ID)
+        _REKLAM_HATA = "Reklam talep edildi ancak henuz hazir olmayabilir. Biraz sonra tekrar deneyin."
     except Exception as e:
-        print(f"Reklam sistemi baslatma hatasi: {e}")
+        _REKLAM_HATA = "Reklam baslatilamadi: " + str(e)
+        _REKLAM_YONETICISI = None
+        print(_REKLAM_HATA)
 
 
 def reklam_yeniden_yukle():
+    global _REKLAM_HATA
     if _REKLAM_YONETICISI:
         try:
             _REKLAM_YONETICISI.load_rewarded_ad(ADMOB_REWARDED_ID)
         except Exception as e:
-            print(f"Reklam yeniden yukleme hatasi: {e}")
+            _REKLAM_HATA = "Reklam yeniden yuklenemedi: " + str(e)
+            print(_REKLAM_HATA)
 
 
 def reklam_goster(callback):
-    global _ODUL_CALLBACK
-    _ODUL_CALLBACK = callback
-    if _REKLAM_YONETICISI:
-        try:
-            _REKLAM_YONETICISI.show_rewarded_ad()
-        except Exception as e:
-            print(f"Reklam gosterme hatasi: {e}")
-            _ODUL_CALLBACK = None
-    else:
-        print("Odullu reklam su anda kullanilamiyor; odul verilmedi.")
+    global _ODUL_CALLBACK, _REKLAM_HATA
+    if _REKLAM_YONETICISI is None:
         _ODUL_CALLBACK = None
+        _reklam_uyarisi(_REKLAM_HATA)
+        return
+    try:
+        _ODUL_CALLBACK = callback
+        _REKLAM_YONETICISI.show_rewarded_ad()
+    except Exception as e:
+        _ODUL_CALLBACK = None
+        _REKLAM_HATA = "Reklam gosterilemedi: " + str(e)
+        print(_REKLAM_HATA)
+        _reklam_uyarisi(_REKLAM_HATA)
 
 ASSETS_KLASORU = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets")
 
