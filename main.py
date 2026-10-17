@@ -439,7 +439,7 @@ class GirisEkrani(Screen):
         self.isim_kutusu = TextInput(
             hint_text="Adini yaz", multiline=False, font_size="20sp",
             halign="center", foreground_color=(0.24, 0.16, 0.10, 1),
-            background_color=(1, 0.97, 0.88, 1),
+            background_color=(1, 1, 1, 0),
             size_hint=(0.64, 0.062), pos_hint={"center_x": 0.5, "y": 0.135})
         kok.add_widget(self.isim_kutusu)
         # Gorseldeki yesil Basla dugmesi zaten resimde; gorunmez
