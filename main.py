@@ -871,14 +871,15 @@ class BulmacaOyunuEkrani(Screen):
         self.secilenler = []
         self.eslesen_cift = 0
         self.tiklama_kilitli = False
-        self.ezber_suresi = 0
+        self.ezber_suresi = 5
+        self.tiklama_kilitli = True
 
         toplam_cift = min(8, 4 + (self.seviye - 1) * 2)
         secilen = random.sample(self.SEMBOLLER, toplam_cift)
         liste = secilen * 2
         random.shuffle(liste)
         self.toplam_cift = toplam_cift
-        self.kartlar = [{"sembol": s, "acik": False, "eslesdi": False} for s in liste]
+        self.kartlar = [{"sembol": s, "acik": True, "eslesdi": False} for s in liste]
 
         self.lbl_durum.text = (
             f"Aynı hayvanları bul!  |  Seviye {self.seviye}  |  Puan {self.puan}"
@@ -887,12 +888,12 @@ class BulmacaOyunuEkrani(Screen):
         metni_turkce_seslendir("Ayni hayvanlari bul")
         if self._ezber_olay:
             self._ezber_olay.cancel()
-        self._ezber_olay = None
+        self._ezber_olay = Clock.schedule_interval(self._ezber_adimi, 1)
 
     def _ezber_adimi(self, dt):
         if not self.oyun_aktif:
             return False
-        if self.ezber_suresi > 0:
+        if self.ezber_suresi > 1:
             self.ezber_suresi -= 1
             self._ciz()
         else:
@@ -1354,12 +1355,27 @@ class MinikKasiflerApp(App):
         a.bind(on_complete=lambda *_: self.finish_effect(l))
         a.start(l)
 
+    def confirm_exit(self):
+        if self.modal:
+            self.modal.dismiss()
+            self.modal = None
+        self.modal = dialog(
+            "Oyundan Çık",
+            "Oyundan çıkmak istiyor musun?",
+            [
+                ("Oyuna Dön", lambda: None),
+                ("Çıkış", self.stop),
+            ],
+        )
+
     def back_key(self, window, key, *_):
         if key != 27:
             return False
         if self.sm.current in ("balon", "ari", "sekil", "bulmaca"):
             self.pause_game()
-        elif self.sm.current != "giris":
+        elif self.sm.current in ("menu", "giris"):
+            self.confirm_exit()
+        else:
             self.sm.current = "menu"
         return True
 
