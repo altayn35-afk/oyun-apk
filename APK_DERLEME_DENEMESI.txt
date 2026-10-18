@@ -1,0 +1,8 @@
+18 Ekim 2026 — 1.3.0 kaynak teslimati
+Buildozer 1.5.0 ve Cython 0.29.36 kurularak android debug denendi.
+Buildozer Git ve Cython'u buldu; Java derleyicisi javac eksik oldugu icin durdu.
+Java17 JDK ve native araclarin kurulmasi denendi; ortamda apt setgroups/kimlik
+kisiti ve ardindan paket onbellegi yazma izni hatalariyla kurulum tamamlanamadi.
+Android SDK/NDK derlemesine ulasilmadi. Yeni APK veya AAB uretilmedi.
+Bu surumde telefon/emulator testi yoktur. Uzak GitHub Actions calistirilmadi.
+Ham Buildozer deneme ciktisi dogrulama/ANDROID_DERLEME_DENEMESI.txt icindedir.

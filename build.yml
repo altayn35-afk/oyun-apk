@@ -1,0 +1,51 @@
+name: Android APK
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, master, ana]
+permissions:
+  contents: read
+jobs:
+  android:
+    runs-on: ubuntu-22.04
+    env:
+      TAR_OPTIONS: --no-same-owner
+      ac_cv_func_posix_spawn: "no"
+      ac_cv_func_posix_spawnp: "no"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y git zip unzip autoconf libtool pkg-config zlib1g-dev libncurses5-dev libncursesw5-dev cmake libffi-dev libssl-dev automake
+          python -m pip install buildozer==1.5.0 Cython==0.29.36 Pillow PyYAML
+      - name: Compile source
+        run: |
+          python -m compileall -q main.py interface.py storage.py startup_diagnostics.py android_build_hook.py
+          python -m unittest discover -s tests -p test_android_build.py -v
+          python -m unittest discover -s tests -p test_startup.py -v
+          python tests/verify_assets.py
+      - name: Gameplay and interface tests
+        env:
+          SDL_VIDEODRIVER: offscreen
+          SDL_AUDIODRIVER: dummy
+          KIVY_NO_ARGS: '1'
+        run: |
+          python -m pip install -r requirements-dev.txt
+          python -m unittest discover -s tests -v
+      - name: Build APK
+        run: buildozer -v android debug
+      - name: Check packaged Python dependencies and native architectures
+        run: python tools/audit_apk.py bin/*.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Minik-Kasifler-Android
+          path: bin/*.apk
+          if-no-files-found: error

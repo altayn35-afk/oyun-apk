@@ -1,0 +1,15 @@
+1.3.0 — GORSEL VE OYNANIS TESLIMATI
+- Net bes sahne, ayri balon/sekil/hayvan/petek/kovan dosyalari korundu.
+- Yeni ucus pozunda 3D ari ve dort renkli 3D kare menu karti eklendi.
+- Menu referanslardaki iki sutunlu dort oyun kartina gecirildi.
+- Karsilama, ad girisi ve gercek basari ozeti ayri alanlarda yerlestirildi.
+- Ari hareketi yumusatildi; tehlike sonrasi koruma yanip sonme ile gorunur oldu.
+- Balon oyunu ilk anda gorunen normal balonlarla basliyor.
+- Sekil gorevine gorsel ornek, hafiza oyununa gercek cift ilerleme sayaci eklendi.
+- Sekil sayacinin sifirda fazladan bir saniye beklemesi duzeltildi.
+- Mor kapali kartlar, hayvan eslestirmesi, gecikmeli kapanma ve 4/6/8 cift seviyeleri dogrulandi.
+- Sonuc, oyun bitti, duraklatma, ayarlar ve basari ekranlari kontrol edildi.
+- Gercek logcat kaydindaki eksik filetype paketi Buildozer gereksinimlerine eklendi.
+- APK denetimi, her ARM paketinde filetype dahil kritik modulleri artik kontrol ediyor.
+- Onceki p4a/NDK/API/Gradle hook zinciri korundu; CI'ya oyun testleri eklendi.
+- Yeni APK teslim edilmiyor; Android/telefon dogrulama sinirlari raporda aciklandi.

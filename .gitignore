@@ -1,0 +1,11 @@
+.buildozer/
+.gradle/
+bin/
+__pycache__/
+*.py[cod]
+*.log
+*.keystore
+*.jks
+player.json
+player.tmp
+android_apk/

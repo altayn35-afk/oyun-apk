@@ -1,28 +1,28 @@
 [app]
-
-title = Minik Kasifler Atolyesi
+title = Minik Kaşifler Atölyesi
 package.name = minikkasifler
 package.domain = org.minikkasifler
 source.dir = .
-source.include_exts = py,png,jpg,kv,atlas,mp3,wav
-source.exclude_exts = spec
-source.exclude_dirs = tests, bin, .git
-
-requirements = python3,kivy,gtts,kivmob,charset-normalizer,urllib3,idna,certifi,requests,filetype
-
-version = 1.0.0
+source.include_exts = py,png,jpg,kv,atlas,wav,ttf,txt
+source.exclude_dirs = tests,tools,bin,.git,.buildozer,__pycache__,dogrulama,android_apk
+version = 1.3.0
+requirements = python3==3.11.5,kivy==2.3.1,chardet==5.2.0,filetype==1.2.0
+p4a.branch = v2024.01.21
+p4a.commit = 957a3e5f8c270f7aa648ba185e5a68c1077a798d
+p4a.hook = android_build_hook.py
+icon.filename = assets/ari_karakter.png
 orientation = portrait
 fullscreen = 0
-android.permissions = INTERNET, ACCESS_NETWORK_STATE
-
-# Kararli mimari ve NDK surumu
-android.archs = armeabi-v7a
-android.ndk = 25b
-android.api = 33
+android.archs = arm64-v8a,armeabi-v7a
+android.api = 35
 android.minapi = 24
-
+android.ndk = 25b
 android.accept_sdk_license = True
 android.release_artifact = apk
+
+[app@tani]
+title = Minik Kaşifler Tanı
+package.name = minikkasiflertani
 
 [buildozer]
 log_level = 2
