@@ -2,7 +2,7 @@ name: Build Android App
 
 on:
   push:
-    branches: [ main, master, ana ]
+    branches: [ main, master, ana, reklam-test-1-4 ]
 
 jobs:
   build:
