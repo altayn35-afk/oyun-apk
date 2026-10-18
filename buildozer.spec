@@ -8,7 +8,7 @@ source.include_exts = py,png,jpg,kv,atlas,mp3,wav
 source.exclude_exts = spec
 source.exclude_dirs = tests, bin, .git
 
-requirements = python3,kivy,gtts,kivmob,charset-normalizer,urllib3,idna,certifi,requests
+requirements = python3,kivy,gtts,kivmob,charset-normalizer,urllib3,idna,certifi,requests,filetype
 
 version = 1.0.0
 orientation = portrait
