@@ -40,6 +40,7 @@ def configure_gradle(directory):
 def before_apk_assemble(toolchain):
     configure_gradle(Path.cwd())
     configure_window_theme(Path.cwd())
+    configure_rewarded_ads(Path.cwd())
 
 
 def configure_window_theme(directory):
@@ -62,3 +63,39 @@ def configure_window_theme(directory):
         folder.mkdir(parents=True, exist_ok=True)
         (folder / "explorer_theme.xml").write_text(base.format(content), encoding="utf8")
     manifest.write_text(text, encoding="utf8")
+
+
+def configure_rewarded_ads(directory):
+    """Install test-only child-directed rewarded SDK into generated Android project."""
+    directory = Path(directory)
+    gradle = directory / "build.gradle"
+    text = gradle.read_text(encoding="utf8")
+    dependency = "implementation 'com.google.android.gms:play-services-ads:23.6.0'"
+    # The p4a template uses a dependencies { } section for app dependencies.
+    if dependency not in text:
+        if "dependencies {" not in text:
+            raise RuntimeError("Cannot locate Gradle dependencies block")
+        idx = text.rfind("dependencies {")
+        text = text[:idx] + "dependencies {\n    " + dependency + text[idx + len("dependencies {"):]
+        gradle.write_text(text, encoding="utf8")
+
+    manifest = directory / "src/main/AndroidManifest.xml"
+    data = manifest.read_text(encoding="utf8")
+    if 'com.google.android.gms.ads.APPLICATION_ID' not in data:
+        marker = "</application>"
+        if marker not in data:
+            raise RuntimeError("Cannot locate Android application manifest section")
+        entry = ('<meta-data android:name="com.google.android.gms.ads.APPLICATION_ID" '
+                 'android:value="ca-app-pub-1540771956171830~3252252740" />')
+        data = data.replace(marker, entry + "\n" + marker, 1)
+    if 'android.permission.INTERNET' not in data:
+        data = data.replace('<application', '<uses-permission android:name="android.permission.INTERNET" />\n<application', 1)
+    if 'android.permission.ACCESS_NETWORK_STATE' not in data:
+        data = data.replace('<application', '<uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />\n<application', 1)
+    manifest.write_text(data, encoding="utf8")
+
+    import shutil
+    source = Path(__file__).with_name("RewardedBridge.java")
+    dest = directory / "src/main/java/org/minikkasifler/ads/RewardedBridge.java"
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(source, dest)

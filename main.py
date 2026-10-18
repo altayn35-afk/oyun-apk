@@ -27,6 +27,7 @@ from kivy.core.text import LabelBase
 from storage import SaveStore
 from kivy.graphics import Color, Ellipse, Rectangle, Triangle, Line
 from kivy.clock import Clock
+from rewarded_ads import RewardedAds
 from kivy.core.audio import SoundLoader
 from kivy.core.window import Window
 mark("imports-complete")
@@ -1083,19 +1084,12 @@ class OyunArkaplani(FloatLayout):
         )
 
 
-# Game-over handling never invokes an ad network.
+# Rewarded advertisements are optional; waiting always remains available.
 def can_bitti_popup_goster(app, oyun_kodu, menuye_don_callback):
     screen = app.sm.get_screen(oyun_kodu)
     screen.oyun_aktif = False
     app.record(screen)
-    app.modal = dialog(
-        "Oyun Bitti",
-        f"Güzel denemeydi!\nPuan: {screen.puan}\nSeviye: {screen.seviye}",
-        [
-            ("Tekrar Oyna", lambda: app.start_game(oyun_kodu)),
-            ("Ana Menü", menuye_don_callback),
-        ],
-    )
+    app.show_lives_dialog(oyun_kodu, menuye_don_callback)
 
 
 class MinikKasiflerApp(App):
@@ -1115,6 +1109,10 @@ class MinikKasiflerApp(App):
         self.canlar = 3
         self.max_can = 3
         self.modal = None
+        self.rewarded = RewardedAds()
+        self._life_wait_event = None
+        self._life_wait_deadline = None
+        self._life_game = None
         self.effects = []
         self.sm = ScreenManager(
             transition=__import__(
@@ -1148,9 +1146,112 @@ class MinikKasiflerApp(App):
         self.sm.bind(current=self.changed_screen)
         Window.bind(on_keyboard=self.back_key)
         self.heartbeat = Clock.schedule_interval(self.tick, 1 / 30)
+        Clock.schedule_once(lambda dt: self.rewarded.initialize(), 0)
+        self.ad_heartbeat = Clock.schedule_interval(self.check_reward, 0.35)
         Clock.schedule_once(lambda dt: self.apply_audio(), 0)
         mark("ui-built")
         return self.sm
+
+    def cancel_life_wait(self):
+        if self._life_wait_event:
+            self._life_wait_event.cancel()
+            self._life_wait_event = None
+        self._life_wait_deadline = None
+        self._life_game = None
+
+    def show_lives_dialog(self, code, back_callback):
+        import time
+        self.cancel_life_wait()
+        self._life_game = code
+        self._life_wait_deadline = time.monotonic() + 90
+        self._life_wait_event = Clock.schedule_interval(self.update_life_wait, 1)
+        self.render_life_dialog()
+
+    def render_life_dialog(self):
+        import time
+        if not self._life_game:
+            return
+        remaining = max(0, int(math.ceil(self._life_wait_deadline - time.monotonic())))
+        screen = self.sm.get_screen(self._life_game)
+        if self.modal:
+            self.modal.dismiss(animation=False)
+            self.modal = None
+        self.modal = dialog(
+            "Canların Bitti",
+            f"Puan: {screen.puan}  |  Seviye: {screen.seviye}\n"
+            f"Reklam izle, 1 can kazan.\n"
+            f"Ya da {remaining} saniye bekle.",
+            [
+                ("Reklam İzle (+1 Can)", self.watch_life_ad),
+                ("Bekle", self.wait_life),
+                ("Ana Menü", self.leave_life_screen),
+            ],
+        )
+
+    def wait_life(self):
+        # Dialog closes; a fresh countdown dialog is displayed and updated in place.
+        self.render_life_dialog()
+
+    def update_life_wait(self, dt):
+        import time
+        if not self._life_game:
+            return False
+        if time.monotonic() >= self._life_wait_deadline:
+            self.grant_life()
+            return False
+        # Update only every 5s to avoid constantly rebuilding the modal.
+        if int(math.ceil(self._life_wait_deadline - time.monotonic())) % 5 == 0:
+            self.render_life_dialog()
+
+    def watch_life_ad(self):
+        if not self._life_game:
+            return
+        if not self.rewarded.show():
+            self.render_life_dialog()
+            if self.modal:
+                self.modal.dismiss(animation=False)
+            self.modal = dialog("Reklam Hazır Değil", "Şu an reklam bulunamadı.\n90 saniyelik bekleme devam ediyor.",
+                                [("Beklemeye Dön", self.render_life_dialog),
+                                 ("Ana Menü", self.leave_life_screen)])
+
+    def check_reward(self, dt):
+        status = self.rewarded.poll()
+        if status == 'earned' and self._life_game:
+            self.grant_life()
+        elif status in ('closed', 'failed') and self._life_game:
+            self.render_life_dialog()
+
+    def grant_life(self):
+        code = self._life_game
+        if not code:
+            return
+        self.cancel_life_wait()
+        if self.modal:
+            self.modal.dismiss(animation=False)
+            self.modal = None
+        self.canlar = 1
+        s = self.sm.get_screen(code)
+        s._timeout = 90
+        if s.name == 'sekil':
+            s._seviye_yukle()
+        elif s.name == 'bulmaca':
+            s._seviye_yukle()
+        else:
+            s.oyun_aktif = True
+            if s.name == 'balon':
+                if s._olay:
+                    s._olay.cancel()
+                s._olay = Clock.schedule_interval(s.adim, 1/30)
+            elif s.name == 'ari':
+                if s._olay:
+                    s._olay.cancel()
+                s._olay = Clock.schedule_interval(s.adim, 1/30)
+        s.ust_panel.ses_guncelle()
+        self.refresh_hud(s)
+
+    def leave_life_screen(self):
+        self.cancel_life_wait()
+        self.sm.current = 'menu'
 
     def apply_audio(self):
         global SES_ACIK
@@ -1167,6 +1268,7 @@ class MinikKasiflerApp(App):
         if self.modal:
             self.modal.dismiss()
             self.modal = None
+        self.cancel_life_wait()
         self.stop_games()
         self.canlar = 3
         s = self.sm.get_screen(code)
@@ -1392,6 +1494,8 @@ class MinikKasiflerApp(App):
     def on_stop(self):
         self.stop_games()
         self.heartbeat.cancel()
+        self.ad_heartbeat.cancel()
+        self.cancel_life_wait()
         self.kayit.save()
         if _MUZIK:
             _MUZIK.stop()
