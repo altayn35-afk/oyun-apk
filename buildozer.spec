@@ -10,7 +10,6 @@ requirements = python3==3.11.5,kivy==2.3.1,chardet==5.2.0,filetype==1.2.0
 p4a.branch = v2024.01.21
 p4a.commit = 957a3e5f8c270f7aa648ba185e5a68c1077a798d
 p4a.hook = android_build_hook.py
-icon.filename = assets/ari_karakter.png
 orientation = portrait
 fullscreen = 0
 android.archs = arm64-v8a,armeabi-v7a
