@@ -18,7 +18,7 @@ android.api = 35
 android.minapi = 24
 android.ndk = 25b
 android.accept_sdk_license = True
-android.release_artifact = apk
+android.release_artifact = aab
 
 [app@tani]
 title = Minik Kaşifler Tanı
