@@ -1,7 +1,7 @@
 [app]
 title = Minik Kaşifler Atölyesi
-package.name = minikkasifler
-package.domain = org.minikkasifler
+package.name = oyunum
+package.domain = org.oyun
 source.dir = .
 source.include_exts = py,png,jpg,kv,atlas,wav,ttf,txt
 source.exclude_dirs = tests,tools,bin,.git,.buildozer,__pycache__,dogrulama,android_apk
