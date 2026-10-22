@@ -1,7 +1,7 @@
 """Android rewarded-ad bridge. Never awards a life merely for opening an ad."""
 from kivy.utils import platform
 
-TEST_AD_UNIT = "ca-app-pub-3940256099942544/5224354917"
+TEST_AD_UNIT = "ca-app-pub-1540771956171830/9097896782"
 
 class RewardedAds:
     def __init__(self):
