@@ -13,6 +13,9 @@ from kivy.uix.scrollview import ScrollView
 from kivy.core.window import Window
 from kivy.app import App
 from kivy.metrics import dp
+from kivy.clock import Clock
+from menu_motion import MenuIcon
+from text_relief import relief, enlarge
 from pathlib import Path
 from kivy.graphics import Color, RoundedRectangle
 
@@ -27,11 +30,12 @@ TITLES = {
 
 def label(text, **kw):
     kw.setdefault("font_size", "17sp")
+    kw["font_size"] = enlarge(kw["font_size"])
     w = Label(text=text, color=(0.13, 0.18, 0.29, 1), bold=True, **kw)
-    w.bind(size=lambda w, v: setattr(w, "text_size", v))
+    w.bind(size=lambda w, v: setattr(w, "text_size", (v[0], None)))
     w.halign = "center"
     w.valign = "middle"
-    return w
+    return relief(w)
 
 
 def button(text, fn, skin="button", **kw):
@@ -40,7 +44,7 @@ def button(text, fn, skin="button", **kw):
         bold=True,
         halign="center",
         valign="middle",
-        font_size="16sp",
+        font_size="18sp",
         background_normal=str(A / (skin + ".png")),
         background_down=str(A / (skin + ".png")),
         border=(0, 0, 0, 0),
@@ -48,7 +52,7 @@ def button(text, fn, skin="button", **kw):
     )
     b.bind(on_release=lambda *_: fn())
     b.bind(size=lambda w, v: setattr(w, "text_size", (v[0] - dp(12), v[1])))
-    return b
+    return relief(b)
 
 
 def backdrop(file):
@@ -177,7 +181,7 @@ class Login(Screen):
         b.add_widget(label("Adını yazalım", size_hint_y=None, height=dp(30)))
         self.isim_kutusu = TextInput(
             multiline=False,
-            font_size="22sp",
+            font_size="24sp",
             hint_text="Adın",
             halign="center",
             size_hint_y=None,
@@ -219,16 +223,18 @@ class Menu(Screen):
                  "sekil": "sekil_Yildiz_Mavi.png", "bulmaca": "kart_Aslan.png"}
         skins = {"balon": "tile", "ari": "tile_orange", "sekil": "tile_pink", "bulmaca": "tile_purple"}
         self.game_buttons = {}
+        self.menu_icons = {}
+        self._animation_event = None
         for g, title in TITLES.items():
             card = FloatLayout()
             control = button("", lambda g=g: App.get_running_app().start_game(g),
                              skin=skins[g], pos_hint={"x": 0, "y": 0})
             self.game_buttons[g] = control
             card.add_widget(control)
-            card.add_widget(Image(source=str(A / icons[g]), fit_mode="contain",
-                                  size_hint=(0.76, 0.59),
-                                  pos_hint={"center_x": 0.5, "top": 0.93}))
-            caption = label(title, font_size="15sp", size_hint=(0.88, 0.31),
+            self.menu_icons[g] = MenuIcon(g, icons[g], size_hint=(0.76, 0.59),
+                                          pos_hint={"center_x": 0.5, "top": 0.93})
+            card.add_widget(self.menu_icons[g])
+            caption = label(title.replace("Peşinde ", "Peşinde\n").replace("Şekil ve Renk Avcısı", "Şekil ve\nRenk Avcısı"), font_size="15sp", size_hint=(0.88, 0.31),
                             pos_hint={"center_x": 0.5, "y": 0.08})
             caption.color = (1, 1, 1, 1)
             card.add_widget(caption)
@@ -239,6 +245,29 @@ class Menu(Screen):
         b.add_widget(self.summary)
         b.add_widget(button("Başarılarım", lambda: setattr(self.manager, "current", "achievements"),
                             size_hint_y=None, height=dp(52)))
+
+    def on_enter(self, *_):
+        self.start_animation()
+
+    def on_pre_leave(self, *_):
+        self.stop_animation()
+
+    def on_leave(self, *_):
+        self.stop_animation()
+
+    def start_animation(self):
+        if self._animation_event is None:
+            self._animation_event = Clock.schedule_interval(self.animate, 1 / 30)
+
+    def stop_animation(self):
+        if self._animation_event:
+            self._animation_event.cancel()
+            self._animation_event = None
+
+    def animate(self, dt):
+        if self.manager and self.manager.current == self.name:
+            for icon in self.menu_icons.values():
+                icon.advance(dt)
 
     def on_pre_enter(self, *_):
         data = App.get_running_app().kayit.data
@@ -284,7 +313,7 @@ class Achievements(Screen):
     def on_pre_enter(self, *_):
         for g, w in self.rows.items():
             d = App.get_running_app().kayit.data["games"][g]
-            w.text = f"{TITLES[g]}\nEn iyi: {d['best']} • Seviye: {d['level']}\nTamamlanan: {d['completed']} • Yıldız: {d['stars']}"
+            w.text = f"{TITLES[g]}\nEn iyi: {d['best']} • Seviye: {d['level']}\nTamamlanan: {d['completed']}\nYıldız: {d['stars']}"
 
 
 class Settings(Screen):

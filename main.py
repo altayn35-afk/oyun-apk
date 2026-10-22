@@ -16,11 +16,14 @@ from kivy.uix.screenmanager import ScreenManager, Screen
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.floatlayout import FloatLayout
 from kivy.uix.label import Label
+from kivy.uix.button import Button
 from kivy.uix.image import Image
 from kivy.core.image import Image as CoreImage
 from functools import lru_cache
 from kivy.graphics import RoundedRectangle
 from kivy.uix.widget import Widget
+from kivy.properties import NumericProperty
+from text_relief import relief
 from kivy.uix.stencilview import StencilView
 from kivy.metrics import dp
 from kivy.core.text import LabelBase
@@ -240,13 +243,16 @@ class BalonOyunuEkrani(Screen):
         self.seviye = 1
         self.balon_sayaci = 0
         self.oyun_aktif = True
-        w, h = self.oyun_alani.size
+        # A newly selected Screen can still have a zero-height play area before layout.
+        # Save the same nonzero viewport used to create positions AND velocities.
+        w = self.oyun_alani.width if self.oyun_alani.width > 1 else dp(350)
+        h = self.oyun_alani.height if self.oyun_alani.height > 1 else dp(450)
         self.balonlar = [
             {"x": w*x, "y": h*y, "hiz": h*.158, "aci": i,
              "sprite": color, "tuzak": False}
             for i, (x, y, color) in enumerate(((.24,.15,"mavi"),(.74,.43,"sari"),(.30,.71,"kirmizi")))
         ]
-        self._last_size = tuple(self.oyun_alani.size)
+        self._last_size = (w, h)
         muzik_ses_seviyesi_ayarla(0.2)
         if self._olay:
             self._olay.cancel()
@@ -255,8 +261,9 @@ class BalonOyunuEkrani(Screen):
     def adim(self, dt):
         if not self.oyun_aktif or self.manager.current != self.name:
             return
-        w = self.oyun_alani.width or 350
-        h = self.oyun_alani.height or 450
+        w, h = self.oyun_alani.size
+        if w <= 1 or h <= 1:
+            return
 
         oldw, oldh = self._last_size
         if oldw > 0 and oldh > 0 and (oldw, oldh) != (w, h):
@@ -293,6 +300,8 @@ class BalonOyunuEkrani(Screen):
 
         yeni_balonlar = []
         for b in self.balonlar:
+            if b["hiz"] <= 0:
+                b["hiz"] = h * min(0.42, 0.14 + self.seviye * 0.018)
             b["y"] += b["hiz"] * dt
             b["aci"] += dt * 1.5
             b["x"] = max(
@@ -378,6 +387,24 @@ class BalonOyunuEkrani(Screen):
 # ==========================================
 # OYUN 2: NESELI ARI (Ağaç Sorunu Çözüldü & Kovan Eklendi)
 # ==========================================
+class EnergyMeter(Widget):
+    value = NumericProperty(4)
+
+    def __init__(self, **kw):
+        super().__init__(**kw)
+        self.bind(value=self.draw, size=self.draw, pos=self.draw)
+
+    def draw(self, *_):
+        self.canvas.clear()
+        gap = dp(4)
+        width = max(0, (self.width - 3*gap)/4)
+        with self.canvas:
+            for i in range(4):
+                Color(*((1, .66, .04, 1) if i < self.value else (.68, .67, .62, .7)))
+                RoundedRectangle(pos=(self.x+i*(width+gap), self.y+dp(6)),
+                                 size=(width, max(0,self.height-dp(12))), radius=[dp(5)])
+
+
 class AriOyunuEkrani(Screen):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -399,6 +426,13 @@ class AriOyunuEkrani(Screen):
             outline_color=(0.12, 0.24, 0.14, 1),
         )
         self.dis.add_widget(self.lbl_skor)
+        energy_row = BoxLayout(size_hint_y=None, height=dp(30), spacing=dp(8), padding=(dp(8), 0))
+        cream(energy_row)
+        self.lbl_energy = label("Enerji: 4/4", font_size="14sp", size_hint_x=.45)
+        self.energy_meter = EnergyMeter()
+        energy_row.add_widget(self.lbl_energy)
+        energy_row.add_widget(self.energy_meter)
+        self.dis.add_widget(energy_row)
         self.dis.add_widget(self.oyun_alani)
         self.kok.add_widget(self.dis)
         self.add_widget(self.kok)
@@ -432,6 +466,7 @@ class AriOyunuEkrani(Screen):
         self.ari_hedef_y = 0.5
         self.spawn = 0
         self.collected = 0
+        self.energy = 4
         self.elapsed = 0
         self.invulnerable = 0
 
@@ -464,12 +499,22 @@ class AriOyunuEkrani(Screen):
             obj[0] -= speed * dt
             if obj[0] < -0.1:
                 self.engeller.remove(obj)
+                if obj[2]:
+                    self.energy -= 1
+                    if self.energy == 0:
+                        self.energy = 4
+                        self.app.effect(self.oyun_alani.center_x, self.oyun_alani.center_y,
+                                        "Enerjin bitti! -1 can")
+                        self._can_azalt()
+                        if not self.oyun_aktif:
+                            return
                 continue
             if abs(obj[0] - 0.20) < 0.105 and abs(obj[1] - self.ari_y) < 0.085:
                 self.engeller.remove(obj)
                 if obj[2]:
                     self.puan += 10
                     self.collected += 1
+                    self.energy = 4
                     ses_efekti_cal("tin")
                     self.app.record(self)
                     self.app.effect(
@@ -488,6 +533,8 @@ class AriOyunuEkrani(Screen):
             self.app.complete(self, self.next_level)
 
     def _ciz(self, *_):
+        self.energy_meter.value = self.energy
+        self.lbl_energy.text = f"Enerji: {self.energy}/4"
         a = self.oyun_alani
         w, h = a.size
         a.canvas.clear()
@@ -495,10 +542,11 @@ class AriOyunuEkrani(Screen):
             Color(1, 1, 1, 1)
             for x, y, honey in self.engeller:
                 side = w * 0.20
+                sw, sh = (side, side) if honey else (side * .75, side * 1.125)
                 Rectangle(
                     texture=oyun_dokusu("honey.png" if honey else "balon_tuzak.png"),
-                    pos=(a.x + x * w - side / 2, a.y + y * h - side / 2),
-                    size=(side, side),
+                    pos=(a.x + x * w - sw / 2, a.y + y * h - sh / 2),
+                    size=(sw, sh),
                 )
             side = w * 0.31
             Color(1, 1, 1, 0.45 if self.invulnerable > 0 and int(self.elapsed * 12) % 2 else 1)
@@ -519,7 +567,7 @@ class AriOyunuEkrani(Screen):
                 pos=(a.right - w * 0.19, a.y),
                 size=(w * 0.18, w * 0.22),
             )
-        self.lbl_skor.text = f"Puan: {self.puan} | Seviye: {self.seviye}\nBal: {self.collected}/{5+self.seviye} • Parmağınla arıyı yönlendir"
+        self.lbl_skor.text = f"Puan: {self.puan} | Seviye: {self.seviye}\nBal: {self.collected}/{5+self.seviye} • Parmağınla yönlendir"
 
     def _can_azalt(self):
         self.app.canlar = max(0, self.app.canlar - 1)
@@ -534,6 +582,7 @@ class AriOyunuEkrani(Screen):
 
     def next_level(self):
         self.collected = 0
+        self.energy = 4
         self.engeller = []
         self.spawn = 0.8
         self.oyun_aktif = True
@@ -1065,10 +1114,10 @@ class UstPanel(BoxLayout):
         self.add_widget(self.kalp_gosterge)
         self.lbl_sure = label("")
         self.lbl_sure.size_hint_x = 0.7
-        self.lbl_sure.font_size = "12sp"
+        self.lbl_sure.font_size = "13sp"
         self.add_widget(self.lbl_sure)
         pause = button("Duraklat", app.pause_game, size_hint_x=1.25)
-        pause.font_size = "14sp"
+        pause.font_size = "15sp"
         self.add_widget(pause)
 
     def ses_guncelle(self):
@@ -1099,7 +1148,7 @@ class MinikKasiflerApp(App):
         LabelBase.register(
             name="Roboto",
             fn_regular=os.path.join(ASSETS_KLASORU, "DejaVuSans.ttf"),
-            fn_bold=os.path.join(ASSETS_KLASORU, "DejaVuSans.ttf"),
+            fn_bold=os.path.join(ASSETS_KLASORU, "DejaVuSans-Bold.ttf"),
         )
         Window.clearcolor = (0.57, 0.83, 0.96, 1)
         Window.softinput_mode = "below_target"
@@ -1140,9 +1189,12 @@ class MinikKasiflerApp(App):
                     indicator.outline_width = 0
             for widget in screen.walk():
                 if isinstance(widget, Label):
+                    if not getattr(widget, "_relief", None):
+                        widget.font_size *= 1.10
+                    relief(widget)
                     widget.halign = "center"
                     widget.valign = "middle"
-                    widget.bind(size=lambda w, v: setattr(w, "text_size", v))
+                    widget.bind(size=lambda w, v: setattr(w, "text_size", (v[0] - dp(12), v[1]) if isinstance(w, Button) else (v[0], None)))
         self.sm.bind(current=self.changed_screen)
         Window.bind(on_keyboard=self.back_key)
         self.heartbeat = Clock.schedule_interval(self.tick, 1 / 30)
@@ -1371,7 +1423,7 @@ class MinikKasiflerApp(App):
                 f"Puan: {s.puan} | Seviye: {s.seviye} | Bulunan: {s.bulunan}/{s.hedef_sayi}"
             )
         if s.name == "balon":
-            s.lbl_skor.text = f"Puan: {s.puan} | Seviye: {s.seviye}\nBalonları patlat • Kuru kafaya dokunma"
+            s.lbl_skor.text = f"Puan: {s.puan} | Seviye: {s.seviye}\nBalonları patlat • Üzgün balona dokunma"
         if s.ust_panel:
             remaining = s.kalan_sure if s.name == "sekil" else s._timeout
             s.ust_panel.lbl_sure.text = "Süre\n" + format_sure(remaining)
@@ -1482,6 +1534,7 @@ class MinikKasiflerApp(App):
         return True
 
     def on_pause(self):
+        self.sm.get_screen("menu").stop_animation()
         self.pause_game()
         if _MUZIK:
             _MUZIK.stop()
@@ -1489,9 +1542,12 @@ class MinikKasiflerApp(App):
         return True
 
     def on_resume(self):
+        if self.sm.current == "menu":
+            self.sm.get_screen("menu").start_animation()
         self.apply_audio()
 
     def on_stop(self):
+        self.sm.get_screen("menu").stop_animation()
         self.stop_games()
         self.heartbeat.cancel()
         self.ad_heartbeat.cancel()
