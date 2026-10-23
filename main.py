@@ -242,6 +242,7 @@ class BalonOyunuEkrani(Screen):
         self.puan = 0
         self.seviye = 1
         self.balon_sayaci = 0
+        self.seviye_balonlari = 0
         self.oyun_aktif = True
         # A newly selected Screen can still have a zero-height play area before layout.
         # Save the same nonzero viewport used to create positions AND velocities.
@@ -298,11 +299,12 @@ class BalonOyunuEkrani(Screen):
                 }
             )
 
+        # Seviyeye gecildiginde ekrandaki balonlar da hizlansin.
         yeni_balonlar = []
         for b in self.balonlar:
             if b["hiz"] <= 0:
                 b["hiz"] = h * min(0.42, 0.14 + self.seviye * 0.018)
-            b["y"] += b["hiz"] * dt
+            b["y"] += b["hiz"] * dt * (1 + (self.seviye - 1) * 0.14)
             b["aci"] += dt * 1.5
             b["x"] = max(
                 w * 0.14, min(w * 0.86, b["x"] + math.sin(b["aci"]) * dt * w * 0.045)
@@ -352,25 +354,24 @@ class BalonOyunuEkrani(Screen):
                 else:
                     ses_efekti_cal("alkis")
                     self.puan += 10
-                    yeni_seviye = (self.puan // 50) + 1
-                    if yeni_seviye > self.seviye:
-                        self.seviye = yeni_seviye
-                        metni_turkce_seslendir(f"Tebrikler, Seviye {self.seviye}")
-                        self.lbl_skor.text = (
-                            f"Puan: {self.puan} | Seviye: {self.seviye}"
-                        )
+                    self.seviye_balonlari += 1
                     self.balonlar.remove(b)
                     self.app.record(self)
                     self.app.effect(
                         self.oyun_alani.x + b["x"], self.oyun_alani.y + b["y"], "+10"
                     )
-                    if self.puan % 50 == 0:
-                        self.seviye -= 1
-                        self.app.complete(
-                            self, lambda: setattr(self, "oyun_aktif", True)
-                        )
-                    self.lbl_skor.text = f"Puan: {self.puan} | Seviye: {self.seviye}"
+                    if self.seviye_balonlari >= 5 * self.seviye:
+                        self.app.complete(self, self._sonraki_balon_seviyesi)
+                    self.lbl_skor.text = (
+                        f"Puan: {self.puan} | Seviye: {self.seviye} | "
+                        f"Balon: {self.seviye_balonlari}/{5 * self.seviye}"
+                    )
                 break
+
+    def _sonraki_balon_seviyesi(self):
+        self.seviye_balonlari = 0
+        self.balonlar = []
+        self.oyun_aktif = True
 
     def _can_azalt(self):
         self.app.canlar = max(0, self.app.canlar - 1)
@@ -1213,15 +1214,16 @@ class MinikKasiflerApp(App):
 
     def show_lives_dialog(self, code, back_callback):
         import time
-        self.cancel_life_wait()
+        if self._life_wait_deadline is None:
+            self._life_wait_deadline = time.monotonic() + 90
         self._life_game = code
-        self._life_wait_deadline = time.monotonic() + 90
-        self._life_wait_event = Clock.schedule_interval(self.update_life_wait, 1)
+        if self._life_wait_event is None:
+            self._life_wait_event = Clock.schedule_interval(self.update_life_wait, 1)
         self.render_life_dialog()
 
     def render_life_dialog(self):
         import time
-        if not self._life_game:
+        if not self._life_game or self.sm.current == "menu":
             return
         remaining = max(0, int(math.ceil(self._life_wait_deadline - time.monotonic())))
         screen = self.sm.get_screen(self._life_game)
@@ -1281,7 +1283,9 @@ class MinikKasiflerApp(App):
         if self.modal:
             self.modal.dismiss(animation=False)
             self.modal = None
-        self.canlar = 1
+        self.canlar = min(self.max_can, self.canlar + 1)
+        if self.sm.current != code:
+            return  # Menudeyken can yenilenir, oyun kendiliginden acilmaz.
         s = self.sm.get_screen(code)
         s._timeout = 90
         if s.name == 'sekil':
@@ -1302,7 +1306,6 @@ class MinikKasiflerApp(App):
         self.refresh_hud(s)
 
     def leave_life_screen(self):
-        self.cancel_life_wait()
         self.sm.current = 'menu'
 
     def apply_audio(self):
@@ -1320,9 +1323,10 @@ class MinikKasiflerApp(App):
         if self.modal:
             self.modal.dismiss()
             self.modal = None
-        self.cancel_life_wait()
+        if self.canlar <= 0:
+            self.show_lives_dialog(code, lambda: self.leave_life_screen())
+            return
         self.stop_games()
-        self.canlar = 3
         s = self.sm.get_screen(code)
         s._completed = 0
         s._last_completed_level = 0
