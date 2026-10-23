@@ -2,7 +2,7 @@ name: Test APK
 
 on:
   push:
-    branches: [reklam-test-1-4]
+    branches: [reklam-test-1-4, can-ve-balon-guncellemesi]
     paths:
       - '.github/workflows/test-apk.yml'
   workflow_dispatch:
