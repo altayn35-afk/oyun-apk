@@ -28,14 +28,44 @@ TITLES = {
 }
 
 
+
 def label(text, **kw):
     kw.setdefault("font_size", "17sp")
     kw["font_size"] = enlarge(kw["font_size"])
-    w = Label(text=text, color=(0.13, 0.18, 0.29, 1), bold=True, **kw)
-    w.bind(size=lambda w, v: setattr(w, "text_size", (v[0], None)))
+
+    # Renkli, kalın ve okunabilir oyun yazıları
+    title = str(text).lower()
+
+    if "minik kaşifler" in title:
+        color = (1.0, 0.68, 0.08, 1)
+    elif "merhaba" in title:
+        color = (0.12, 0.48, 0.95, 1)
+    elif "canların bitti" in title or "oyun bitti" in title:
+        color = (0.95, 0.23, 0.30, 1)
+    elif "başarı" in title or "seviye" in title:
+        color = (0.56, 0.24, 0.90, 1)
+    else:
+        color = (0.16, 0.34, 0.75, 1)
+
+    w = Label(
+        text=text,
+        color=color,
+        bold=True,
+        outline_width=1,
+        outline_color=(1, 1, 1, 0.95),
+        **kw
+    )
+
+    w.bind(
+        size=lambda w, v: setattr(
+            w, "text_size", (v[0], None)
+        )
+    )
     w.halign = "center"
     w.valign = "middle"
-    return relief(w)
+
+    return w
+
 
 
 def button(text, fn, skin="button", **kw):
