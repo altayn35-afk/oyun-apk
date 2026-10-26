@@ -10,6 +10,7 @@ mark("import-kivy")
 import math
 import os
 import random
+import time
 
 from kivy.app import App
 from kivy.uix.screenmanager import ScreenManager, Screen
@@ -1156,8 +1157,10 @@ class MinikKasiflerApp(App):
         self.kayit = SaveStore(self.user_data_dir)
         mark("storage-ready")
         SES_ACIK = self.kayit.data["sound"]
-        self.canlar = 3
         self.max_can = 3
+        self._canlar = self.kayit.data["lives"]
+        self._next_life_at = self.kayit.data["next_life_at"]
+        self._sync_lives()
         self.modal = None
         self.rewarded = RewardedAds()
         self._life_wait_event = None
@@ -1199,63 +1202,141 @@ class MinikKasiflerApp(App):
         self.sm.bind(current=self.changed_screen)
         Window.bind(on_keyboard=self.back_key)
         self.heartbeat = Clock.schedule_interval(self.tick, 1 / 30)
+        self.life_heartbeat = Clock.schedule_interval(lambda dt: self._sync_lives(), 1)
         Clock.schedule_once(lambda dt: self.rewarded.initialize(), 0)
         self.ad_heartbeat = Clock.schedule_interval(self.check_reward, 0.35)
         Clock.schedule_once(lambda dt: self.apply_audio(), 0)
         mark("ui-built")
         return self.sm
 
+    @property
+    def canlar(self):
+        self._sync_lives()
+        return self._canlar
+
+    @canlar.setter
+    def canlar(self, value):
+        self._sync_lives()
+        old = self._canlar
+        self._canlar = max(0, min(self.max_can, int(value)))
+        if self._canlar == self.max_can:
+            self._next_life_at = None
+        elif self._canlar < old and self._next_life_at is None:
+            self._next_life_at = time.time() + 90
+        elif self._canlar < old and self._next_life_at is not None:
+            pass  # Keep the existing recovery clock running.
+        elif self._canlar > old and self._next_life_at is None:
+            self._next_life_at = time.time() + 90
+        self._save_lives()
+
+    def _save_lives(self):
+        self.kayit.data["lives"] = self._canlar
+        self.kayit.data["next_life_at"] = self._next_life_at
+        self.kayit.save()
+
+    def _sync_lives(self):
+        if self._canlar >= self.max_can:
+            if self._next_life_at is not None:
+                self._next_life_at = None
+                self._save_lives()
+            return
+        if self._next_life_at is None:
+            self._next_life_at = time.time() + 90
+            self._save_lives()
+            return
+        now = time.time()
+        if now < self._next_life_at:
+            return
+        earned = int((now - self._next_life_at) // 90) + 1
+        self._canlar = min(self.max_can, self._canlar + earned)
+        if self._canlar >= self.max_can:
+            self._next_life_at = None
+        else:
+            self._next_life_at += earned * 90
+        self._save_lives()
+        for code in ("balon", "ari", "sekil", "bulmaca"):
+            if hasattr(self, "sm") and self.sm.has_screen(code):
+                panel = getattr(self.sm.get_screen(code), "ust_panel", None)
+                if panel:
+                    panel.kalp_gosterge.guncelle(self._canlar, self.max_can)
+
     def cancel_life_wait(self):
         if self._life_wait_event:
             self._life_wait_event.cancel()
             self._life_wait_event = None
-        self._life_wait_deadline = None
         self._life_game = None
+        self._life_wait_label = None
 
     def show_lives_dialog(self, code, back_callback):
-        import time
-        if self._life_wait_deadline is None:
-            self._life_wait_deadline = time.monotonic() + 90
+        self._sync_lives()
         self._life_game = code
         if self._life_wait_event is None:
             self._life_wait_event = Clock.schedule_interval(self.update_life_wait, 1)
         self.render_life_dialog()
 
     def render_life_dialog(self):
-        import time
-        if not self._life_game or self.sm.current == "menu":
+        if not self._life_game:
             return
-        remaining = max(0, int(math.ceil(self._life_wait_deadline - time.monotonic())))
+        if self.canlar > 0:
+            self._resume_after_life()
+            return
         screen = self.sm.get_screen(self._life_game)
+        remaining = max(0, int(math.ceil((self._next_life_at or time.time()) - time.time())))
         if self.modal:
             self.modal.dismiss(animation=False)
             self.modal = None
         self.modal = dialog(
             "Canların Bitti",
-            f"Puan: {screen.puan}  |  Seviye: {screen.seviye}\n"
-            f"Reklam izle, 1 can kazan.\n"
-            f"Ya da {remaining} saniye bekle.",
-            [
-                ("Reklam İzle (+1 Can)", self.watch_life_ad),
-                ("Bekle", self.wait_life),
-                ("Ana Menü", self.leave_life_screen),
-            ],
+            f"Puan: {getattr(screen, 'puan', 0)} | Seviye: {getattr(screen, 'seviye', 1)}\n"
+            f"Reklam izle, 1 can kazan.\nYa da {remaining} saniye bekle.",
+            [("Reklam İzle (+1 Can)", self.watch_life_ad),
+             ("Bekle", self.wait_life),
+             ("Ana Menü", self.leave_life_screen)],
         )
+        # Keep the modal intact and update only its text every second.
+        from kivy.uix.label import Label as KivyLabel
+        for w in self.modal.walk():
+            if isinstance(w, KivyLabel) and "saniye bekle" in w.text:
+                self._life_wait_label = w
+                break
 
     def wait_life(self):
-        # Dialog closes; a fresh countdown dialog is displayed and updated in place.
         self.render_life_dialog()
 
     def update_life_wait(self, dt):
-        import time
+        self._sync_lives()
         if not self._life_game:
             return False
-        if time.monotonic() >= self._life_wait_deadline:
-            self.grant_life()
+        if self._canlar > 0:
+            self._resume_after_life()
             return False
-        # Update only every 5s to avoid constantly rebuilding the modal.
-        if int(math.ceil(self._life_wait_deadline - time.monotonic())) % 5 == 0:
-            self.render_life_dialog()
+        remaining = max(0, int(math.ceil((self._next_life_at or time.time()) - time.time())))
+        w = getattr(self, "_life_wait_label", None)
+        if w is not None:
+            screen = self.sm.get_screen(self._life_game)
+            w.text = (f"Puan: {getattr(screen, 'puan', 0)} | "
+                      f"Seviye: {getattr(screen, 'seviye', 1)}\n"
+                      f"Reklam izle, 1 can kazan.\nYa da {remaining} saniye bekle.")
+
+    def _resume_after_life(self):
+        code = self._life_game
+        self.cancel_life_wait()
+        if self.modal:
+            self.modal.dismiss(animation=False)
+            self.modal = None
+        if not code or self.sm.current != code:
+            return
+        s = self.sm.get_screen(code)
+        s._timeout = 90
+        if s.name in ("sekil", "bulmaca"):
+            s._seviye_yukle()
+        else:
+            s.oyun_aktif = True
+            if s._olay:
+                s._olay.cancel()
+            s._olay = Clock.schedule_interval(s.adim, 1 / 30)
+        s.ust_panel.ses_guncelle()
+        self.refresh_hud(s)
 
     def watch_life_ad(self):
         if not self._life_game:
@@ -1276,36 +1357,13 @@ class MinikKasiflerApp(App):
             self.render_life_dialog()
 
     def grant_life(self):
-        code = self._life_game
-        if not code:
+        if not self._life_game:
             return
-        self.cancel_life_wait()
-        if self.modal:
-            self.modal.dismiss(animation=False)
-            self.modal = None
         self.canlar = min(self.max_can, self.canlar + 1)
-        if self.sm.current != code:
-            return  # Menudeyken can yenilenir, oyun kendiliginden acilmaz.
-        s = self.sm.get_screen(code)
-        s._timeout = 90
-        if s.name == 'sekil':
-            s._seviye_yukle()
-        elif s.name == 'bulmaca':
-            s._seviye_yukle()
-        else:
-            s.oyun_aktif = True
-            if s.name == 'balon':
-                if s._olay:
-                    s._olay.cancel()
-                s._olay = Clock.schedule_interval(s.adim, 1/30)
-            elif s.name == 'ari':
-                if s._olay:
-                    s._olay.cancel()
-                s._olay = Clock.schedule_interval(s.adim, 1/30)
-        s.ust_panel.ses_guncelle()
-        self.refresh_hud(s)
+        self._resume_after_life()
 
     def leave_life_screen(self):
+        self.cancel_life_wait()
         self.sm.current = 'menu'
 
     def apply_audio(self):
@@ -1546,6 +1604,7 @@ class MinikKasiflerApp(App):
         return True
 
     def on_resume(self):
+        self._sync_lives()
         if self.sm.current == "menu":
             self.sm.get_screen("menu").start_animation()
         self.apply_audio()
@@ -1554,6 +1613,7 @@ class MinikKasiflerApp(App):
         self.sm.get_screen("menu").stop_animation()
         self.stop_games()
         self.heartbeat.cancel()
+        self.life_heartbeat.cancel()
         self.ad_heartbeat.cancel()
         self.cancel_life_wait()
         self.kayit.save()
