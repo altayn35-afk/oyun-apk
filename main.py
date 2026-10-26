@@ -40,6 +40,7 @@ mark("imports-complete")
 ASSETS_KLASORU = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets")
 
 class YuklemeEkrani(Screen):
+    yukleme_doluluk = NumericProperty(0)
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
@@ -80,7 +81,16 @@ class YuklemeEkrani(Screen):
         self.sari_dolum.size = (
             genislik * 0.50 * self.yukleme_doluluk,
             yukseklik * 0.029
-        )         
+        ) 
+
+    def on_enter(self, *args):
+        super().on_enter(*args)
+        self.yukleme_doluluk = 0
+        self._yukleme_konumlandir()
+
+        animasyon = Animation(yukleme_doluluk=1, duration=2.5, t="linear")
+        animasyon.bind(on_progress=lambda *a: self._yukleme_konumlandir())
+        animasyon.start(self)
 # ==========================================
 # SES YONETIMI
 # ==========================================
