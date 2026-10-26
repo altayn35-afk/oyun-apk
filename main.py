@@ -55,6 +55,14 @@ class YuklemeEkrani(Screen):
             size_hint=(None, None)
         )
         self.add_widget(self.yukleme_cubugu)
+        with self.yukleme_cubugu.canvas:
+            Color(1, 0.85, 0.05, 1)
+            self.sari_dolum = RoundedRectangle(
+                pos=(0, 0),
+                size=(0, dp(20)),
+                radius=[dp(10)]
+            )
+            
 # ==========================================
 # SES YONETIMI
 # ==========================================
