@@ -64,8 +64,23 @@ class YuklemeEkrani(Screen):
                 radius=[dp(10)]
             )
          self.bind(size=self._yukleme_konumlandir, pos=self._yukleme_konumlandir)
-        Clock.schedule_once(self._yukleme_konumlandir, 0)                   
-            
+        Clock.schedule_once(self._yukleme_konumlandir, 0) 
+        
+       def _yukleme_konumlandir(self, *args):
+        genislik = self.width
+        yukseklik = self.height
+
+        self.yukleme_cubugu.pos = (0, 0)
+        self.yukleme_cubugu.size = (genislik, yukseklik)
+
+        self.sari_dolum.pos = (
+            genislik * 0.225,
+            yukseklik * 0.279
+        )
+        self.sari_dolum.size = (
+            genislik * 0.50 * self.yukleme_doluluk,
+            yukseklik * 0.029
+        )         
 # ==========================================
 # SES YONETIMI
 # ==========================================
