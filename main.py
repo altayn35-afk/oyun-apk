@@ -50,6 +50,11 @@ class YuklemeEkrani(Screen):
         )
 
         self.add_widget(self.arkaplan)
+        self.yukleme_doluluk = 0
+        self.yukleme_cubugu = Widget(
+            size_hint=(None, None)
+        )
+        self.add_widget(self.yukleme_cubugu)
 # ==========================================
 # SES YONETIMI
 # ==========================================
