@@ -58,10 +58,13 @@ class YuklemeEkrani(Screen):
         with self.yukleme_cubugu.canvas:
             Color(1, 0.85, 0.05, 1)
             self.sari_dolum = RoundedRectangle(
+            
                 pos=(0, 0),
                 size=(0, dp(20)),
                 radius=[dp(10)]
             )
+         self.bind(size=self._yukleme_konumlandir, pos=self._yukleme_konumlandir)
+        Clock.schedule_once(self._yukleme_konumlandir, 0)                   
             
 # ==========================================
 # SES YONETIMI
