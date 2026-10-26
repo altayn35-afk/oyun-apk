@@ -1230,6 +1230,7 @@ class MinikKasiflerApp(App):
         )
         mark("create-screens")
         for screen in (
+            YuklemeEkrani(name="yukleme"),
             Login(name="giris"),
             Menu(name="menu"),
             Settings(name="settings"),
