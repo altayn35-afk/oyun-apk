@@ -39,6 +39,17 @@ mark("imports-complete")
 
 ASSETS_KLASORU = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets")
 
+class YuklemeEkrani(Screen):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+        self.arkaplan = Image(
+            source=os.path.join(ASSETS_KLASORU, "acilis_ekrani_bos.png"),
+            fit_mode="fill",
+            size_hint=(1, 1),
+        )
+
+        self.add_widget(self.arkaplan)
 # ==========================================
 # SES YONETIMI
 # ==========================================
