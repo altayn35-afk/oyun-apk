@@ -41,59 +41,52 @@ ASSETS_KLASORU = os.path.join(os.path.dirname(os.path.abspath(__file__)), "asset
 
 class YuklemeEkrani(Screen):
     yukleme_doluluk = NumericProperty(0)
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-
         self.arkaplan = Image(
             source=os.path.join(ASSETS_KLASORU, "acilis_ekrani_bos.png"),
             fit_mode="fill",
             size_hint=(1, 1),
         )
-
         self.add_widget(self.arkaplan)
-        self.yukleme_doluluk = 0
-        self.yukleme_cubugu = Widget(
-            size_hint=(None, None)
-        )
+
+        self.yukleme_cubugu = Widget(size_hint=(None, None))
         self.add_widget(self.yukleme_cubugu)
         with self.yukleme_cubugu.canvas:
             Color(1, 0.85, 0.05, 1)
             self.sari_dolum = RoundedRectangle(
-            
-                pos=(0, 0),
-                size=(0, dp(20)),
-                radius=[dp(10)]
+                pos=(0, 0), size=(0, dp(20)), radius=[dp(10)]
             )
-         self.bind(size=self._yukleme_konumlandir, pos=self._yukleme_konumlandir)
-        Clock.schedule_once(self._yukleme_konumlandir, 0) 
-        
-       def _yukleme_konumlandir(self, *args):
+        self.bind(size=self._yukleme_konumlandir, pos=self._yukleme_konumlandir)
+        self.bind(yukleme_doluluk=self._yukleme_konumlandir)
+        Clock.schedule_once(self._yukleme_konumlandir, 0)
+
+    def _yukleme_konumlandir(self, *args):
         genislik = self.width
         yukseklik = self.height
-
-        self.yukleme_cubugu.pos = (0, 0)
-        self.yukleme_cubugu.size = (genislik, yukseklik)
-
+        self.yukleme_cubugu.pos = self.pos
+        self.yukleme_cubugu.size = self.size
         self.sari_dolum.pos = (
-            genislik * 0.225,
-            yukseklik * 0.279
+            self.x + genislik * 0.225,
+            self.y + yukseklik * 0.279,
         )
         self.sari_dolum.size = (
             genislik * 0.50 * self.yukleme_doluluk,
-            yukseklik * 0.029
-        ) 
+            yukseklik * 0.029,
+        )
 
     def on_enter(self, *args):
         super().on_enter(*args)
+        Animation.cancel_all(self, "yukleme_doluluk")
         self.yukleme_doluluk = 0
         self._yukleme_konumlandir()
-
         animasyon = Animation(yukleme_doluluk=1, duration=2.5, t="linear")
-        animasyon.bind(on_progress=lambda *a: self._yukleme_konumlandir())
-            animasyon.bind(
+        animasyon.bind(
             on_complete=lambda *args: setattr(self.manager, "current", "giris")
         )
         animasyon.start(self)
+
 # ==========================================
 # SES YONETIMI
 # ==========================================
