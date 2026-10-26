@@ -90,6 +90,9 @@ class YuklemeEkrani(Screen):
 
         animasyon = Animation(yukleme_doluluk=1, duration=2.5, t="linear")
         animasyon.bind(on_progress=lambda *a: self._yukleme_konumlandir())
+            animasyon.bind(
+            on_complete=lambda *args: setattr(self.manager, "current", "giris")
+        )
         animasyon.start(self)
 # ==========================================
 # SES YONETIMI
