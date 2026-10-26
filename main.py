@@ -1195,7 +1195,6 @@ class MinikKasiflerApp(App):
                 if isinstance(widget, Label):
                     if not getattr(widget, "_relief", None):
                         widget.font_size *= 1.10
-                    relief(widget)
                     widget.halign = "center"
                     widget.valign = "middle"
                     widget.bind(size=lambda w, v: setattr(w, "text_size", (v[0] - dp(12), v[1]) if isinstance(w, Button) else (v[0], None)))
