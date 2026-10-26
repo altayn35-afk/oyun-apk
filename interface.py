@@ -70,7 +70,7 @@ def label(text, **kw):
 
 def button(text, fn, skin="button", **kw):
     b = Button(
-                text=text,
+        text=text,
         bold=True,
         color=(1, 1, 1, 1),
         outline_width=1,
@@ -85,7 +85,7 @@ def button(text, fn, skin="button", **kw):
     )
     b.bind(on_release=lambda *_: fn())
     b.bind(size=lambda w, v: setattr(w, "text_size", (v[0] - dp(12), v[1])))
-        return b
+    return b
 
 
 def backdrop(file):
