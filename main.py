@@ -31,6 +31,7 @@ from kivy.core.text import LabelBase
 from storage import SaveStore
 from kivy.graphics import Color, Ellipse, Rectangle, Triangle, Line
 from kivy.clock import Clock
+from kivy.animation import Animation
 from rewarded_ads import RewardedAds
 from kivy.core.audio import SoundLoader
 from kivy.core.window import Window
