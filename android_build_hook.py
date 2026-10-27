@@ -53,15 +53,33 @@ def configure_window_theme(directory):
     if old not in text and new not in text:
         raise RuntimeError("Unexpected Android theme in generated manifest")
     text = text.replace(old, new)
-    base = ('<resources><style name="ExplorerTheme" '
-            'parent="android:style/Theme.NoTitleBar">{}</style></resources>\n')
-    for qualifier, content in (
+    # Keep a matching still image visible while Android initializes SDL/Kivy.
+    # This is a background, not an animated progress indicator.
+    import shutil
+    splash_source = Path(__file__).resolve().parent / "assets" / "acilis_ekrani_bos.png"
+    if not splash_source.is_file():
+        raise RuntimeError("Missing Android startup image: assets/acilis_ekrani_bos.png")
+    drawable_dir = main / "res" / "drawable-nodpi"
+    drawable_dir.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(splash_source, drawable_dir / "explorer_startup.png")
+
+    # Set the same image behind the Android activity to avoid the default
+    # black window while the Kivy view is being created.
+    for qualifier, extra in (
         ("values", ""),
         ("values-v35", '<item name="android:windowOptOutEdgeToEdgeEnforcement">true</item>'),
     ):
         folder = main / "res" / qualifier
         folder.mkdir(parents=True, exist_ok=True)
-        (folder / "explorer_theme.xml").write_text(base.format(content), encoding="utf8")
+        content = (
+            '<resources><style name="ExplorerTheme" '
+            'parent="android:style/Theme.NoTitleBar">'
+            '<item name="android:windowBackground">@drawable/explorer_startup</item>'
+            '<item name="android:windowLightStatusBar">false</item>'
+            '<item name="android:windowLightNavigationBar">false</item>'
+            + extra + '</style></resources>\n'
+        )
+        (folder / "explorer_theme.xml").write_text(content, encoding="utf8")
     manifest.write_text(text, encoding="utf8")
 
 
