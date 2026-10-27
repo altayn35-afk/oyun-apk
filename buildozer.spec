@@ -5,8 +5,8 @@ package.domain = org.oyun
 source.dir = .
 source.include_exts = py,png,jpg,kv,atlas,wav,ttf,txt
 source.exclude_dirs = tests,tools,bin,.git,.buildozer,__pycache__,dogrulama,android_apk
-version = 1.4.1
-android.numeric_version = 10245
+version = 1.4.2
+android.numeric_version = 10246
 requirements = python3==3.11.5,kivy==2.3.1,chardet==5.2.0,filetype==1.2.0
 p4a.branch = v2024.01.21
 p4a.commit = 957a3e5f8c270f7aa648ba185e5a68c1077a798d
