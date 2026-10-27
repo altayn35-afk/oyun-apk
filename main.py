@@ -68,11 +68,11 @@ class YuklemeEkrani(Screen):
         self.yukleme_cubugu.pos = self.pos
         self.yukleme_cubugu.size = self.size
         self.sari_dolum.pos = (
-            self.x + genislik * 0.225,
-            self.y + yukseklik * 0.279,
+            self.x + genislik * 0.215,
+            self.y + yukseklik * 0.306,
         )
         self.sari_dolum.size = (
-            genislik * 0.50 * self.yukleme_doluluk,
+            genislik * 0.505 * self.yukleme_doluluk,
             yukseklik * 0.029,
         )
 
