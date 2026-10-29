@@ -17,7 +17,7 @@ presplash.filename = assets/acilis_ekrani_bos.png
 android.archs = arm64-v8a,armeabi-v7a
 android.api = 36
 android.minapi = 24
-android.ndk = 25b
+android.ndk = 28c
 android.accept_sdk_license = True
 android.release_artifact = aab
 
