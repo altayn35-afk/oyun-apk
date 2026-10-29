@@ -3,7 +3,7 @@ name: Build Android App
 
 on:
   push:
-    branches: [reklam-test-1-4, can-ve-balon-guncellemesi]
+        branches: [reklam-test-1-4, can-ve-balon-guncellemesi, 16kb-uyumluluk-duzeltmesi]
   workflow_dispatch:
 
 jobs:
