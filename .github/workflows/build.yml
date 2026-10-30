@@ -52,7 +52,11 @@ jobs:
             -keystore "$RUNNER_TEMP/upload.keystore" \
             -storepass:env KEYSTORE_PASSWORD \
             -alias "$KEY_ALIAS"
-
+      - name: Check Python and pip
+        run: |
+          python --version
+          python -m pip --version
+          python -m pip check
       - name: Build Release AAB
         env:
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
