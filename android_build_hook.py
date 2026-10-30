@@ -16,7 +16,7 @@ def configure_gradle(directory):
     build_text = gradle.read_text(encoding="utf8")
     wrapper_text = wrapper.read_text(encoding="utf8")
     build_text, count = re.subn(
-        r"com\.android\.tools\.build:gradle:(?:8\.1\.1|8\.6\.0)(?=['\"])",
+        r"com\.android\.tools\.build:gradle:\d+(?:\.\d+){1,2}(?=['\"])",
         "com.android.tools.build:gradle:8.6.0", build_text,
     )
     if count != 1:
