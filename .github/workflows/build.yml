@@ -57,6 +57,7 @@ jobs:
           python --version
           python -m pip --version
           python -m pip check
+     
       - name: Build Release AAB
         env:
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
