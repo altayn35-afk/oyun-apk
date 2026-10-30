@@ -28,7 +28,7 @@ def configure_gradle(directory):
     if count != 1:
         raise RuntimeError("Unexpected p4a Gradle template: build tools missing")
     wrapper_text, count = re.subn(
-        r"gradle-(?:8\.0\.2|8\.7)-(?:all|bin)\.zip",
+        r"gradle-\d+(?:\.\d+){1,2}-(?:all|bin)\.zip",
         "gradle-8.7-bin.zip", wrapper_text,
     )
     if count != 1:
